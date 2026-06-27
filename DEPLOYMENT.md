@@ -13,7 +13,7 @@ Free-tier stack: Vercel + Render + Neon + Gemini API.
 
 ---
 
-## 1. Database — Neon Postgres
+## 1. Database (Neon Postgres)
 
 SQLite on Render loses data on redeploy. Use Neon instead.
 
@@ -23,7 +23,7 @@ SQLite on Render loses data on redeploy. Use Neon instead.
 
 ---
 
-## 2. LLM — Gemini API key
+## 2. LLM (Gemini API key)
 
 Groq returns Cloudflare error 1010 from many datacenter IPs. Gemini works on Render.
 
@@ -33,7 +33,7 @@ Groq returns Cloudflare error 1010 from many datacenter IPs. Gemini works on Ren
 
 ---
 
-## 3. Backend — Render
+## 3. Backend (Render)
 
 1. Open [Render Blueprint](https://dashboard.render.com/blueprint/new?repo=https://github.com/Srikanthkn0/llm-eval-pipeline)
 2. Connect the GitHub repo and apply
@@ -44,8 +44,8 @@ Groq returns Cloudflare error 1010 from many datacenter IPs. Gemini works on Ren
 | `DATABASE_URL` | Neon connection string |
 | `GEMINI_API_KEY` | Google AI Studio key |
 | `FRONTEND_ORIGINS` | `https://llm-eval-pipeline.vercel.app` |
-| `GROQ_API_KEY` | _(optional — often blocked on Render)_ |
-| `OPENAI_API_KEY` | _(optional)_ |
+| `GROQ_API_KEY` | optional (often blocked on Render) |
+| `OPENAI_API_KEY` | optional |
 
 4. Verify after deploy:
 
@@ -53,15 +53,15 @@ Groq returns Cloudflare error 1010 from many datacenter IPs. Gemini works on Ren
 curl https://llm-eval-pipeline-api.onrender.com/health
 ```
 
-Expected fields: `"status":"ok"`, `"database":"connected"`, `"llm_providers":{"gemini":true,...}`
+Expected: `"status":"ok"`, `"database":"connected"`, `"llm_providers":{"gemini":true,...}`
 
 ---
 
-## 4. Frontend — Vercel
+## 4. Frontend (Vercel)
 
 1. Import the repo at [vercel.com](https://vercel.com) with root directory `frontend`
-2. **No `VITE_API_BASE_URL` needed** — `vercel.json` proxies `/api` and `/health` to Render
-3. Deploy → https://llm-eval-pipeline.vercel.app
+2. No `VITE_API_BASE_URL` needed - `vercel.json` proxies `/api` and `/health` to Render
+3. Deploy to https://llm-eval-pipeline.vercel.app
 
 Do not commit `frontend/.env` with localhost values. `.vercelignore` excludes it from CLI uploads.
 
@@ -69,9 +69,9 @@ Do not commit `frontend/.env` with localhost values. `.vercelignore` excludes it
 
 ## 5. Smoke test
 
-1. Dashboard shows **ok** status and Gemini **configured**
+1. Dashboard shows `ok` status and Gemini configured
 2. Datasets tab lists the seeded `sample` dataset (5 rows)
-3. Run eval with **Gemini 2.5 Flash-Lite** — progress bar advances
+3. Run eval with **Gemini 2.5 Flash-Lite** - progress bar advances
 4. Results tab shows the completed run with pass rate and per-case table
 
 ---
@@ -80,7 +80,7 @@ Do not commit `frontend/.env` with localhost values. `.vercelignore` excludes it
 
 | Symptom | Fix |
 |---------|-----|
-| Backend unreachable on first load | Render free tier cold start — wait 30s and retry |
+| Backend unreachable on first load | Render free tier cold start - wait 30s and retry |
 | `status: degraded` | Add `GEMINI_API_KEY` on Render |
 | Groq error 1010 | Use Gemini instead |
 | `database: unavailable` | Check `DATABASE_URL` from Neon |

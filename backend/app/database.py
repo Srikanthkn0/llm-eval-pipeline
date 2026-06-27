@@ -3,7 +3,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
 
-from app.config import DATABASE_PATH, settings
+from app.config import DATABASE_PATH, DATABASE_URL, settings
 
 SQLITE_SCHEMA = """
 CREATE TABLE IF NOT EXISTS datasets (
@@ -123,7 +123,7 @@ def init_db() -> None:
     if settings.use_postgres:
         import psycopg
 
-        with psycopg.connect(settings.DATABASE_URL) as conn:
+        with psycopg.connect(DATABASE_URL) as conn:
             with conn.cursor() as cur:
                 cur.execute(POSTGRES_SCHEMA)
             conn.commit()
@@ -154,7 +154,7 @@ def get_connection() -> Iterator[Any]:
     if settings.use_postgres:
         import psycopg
 
-        conn = psycopg.connect(settings.DATABASE_URL)
+        conn = psycopg.connect(DATABASE_URL)
         try:
             yield conn
             conn.commit()

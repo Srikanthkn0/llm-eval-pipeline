@@ -18,7 +18,7 @@ git init
 git add .
 git commit -m "LLM eval pipeline: full-stack app with CI"
 git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/llm-eval-pipeline.git
+git remote add origin https://github.com/Srikanthkn0/llm-eval-pipeline.git
 git push -u origin main
 ```
 

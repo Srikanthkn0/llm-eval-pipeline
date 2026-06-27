@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { fetchEvalRun, fetchEvalRuns } from "../api/client.js";
-import { formatModelName } from "../utils/models.js";
+import { fetchEvalRun, fetchEvalRuns, fetchModels } from "../api/client.js";
+import EvalResultsTable from "../components/EvalResultsTable.jsx";
+import RunSummary from "../components/RunSummary.jsx";
 
 export default function Results({ selectedRunId, onSelectRun }) {
   const [runs, setRuns] = useState([]);
   const [detail, setDetail] = useState(null);
+  const [modelLabels, setModelLabels] = useState({});
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -13,8 +15,11 @@ export default function Results({ selectedRunId, onSelectRun }) {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchEvalRuns();
-      setRuns(data.runs);
+      const [runsData, modelsData] = await Promise.all([fetchEvalRuns(), fetchModels()]);
+      setRuns(runsData.runs);
+      setModelLabels(
+        Object.fromEntries(modelsData.models.map((model) => [model.id, model.label]))
+      );
     } catch (err) {
       setError(err.message);
     } finally {
@@ -52,6 +57,10 @@ export default function Results({ selectedRunId, onSelectRun }) {
     }
   }, [selectedRunId]);
 
+  function labelForModel(modelId) {
+    return modelLabels[modelId] || modelId;
+  }
+
   return (
     <div className="stack">
       <section className="card">
@@ -65,7 +74,7 @@ export default function Results({ selectedRunId, onSelectRun }) {
         {loading && <p className="status-text">Loading runs...</p>}
 
         {!loading && runs.length === 0 && (
-          <p className="status-text">No eval runs saved yet.</p>
+          <p className="status-text">No eval runs yet. Complete one from the Run eval tab.</p>
         )}
 
         {runs.length > 0 && (
@@ -85,7 +94,7 @@ export default function Results({ selectedRunId, onSelectRun }) {
                 <tr key={run.run_id}>
                   <td className="mono">{run.run_id}</td>
                   <td>{run.dataset_name}</td>
-                  <td>{formatModelName(run.model_name)}</td>
+                  <td>{labelForModel(run.model_name)}</td>
                   <td>{(run.pass_rate * 100).toFixed(1)}%</td>
                   <td>{new Date(run.created_at).toLocaleString()}</td>
                   <td>
@@ -117,59 +126,8 @@ export default function Results({ selectedRunId, onSelectRun }) {
 
           {detail && (
             <>
-              <div className="metrics-grid">
-                <div className="metric">
-                  <span className="label">Run ID</span>
-                  <span className="value mono">{detail.run_id}</span>
-                </div>
-                <div className="metric">
-                  <span className="label">Pass rate</span>
-                  <span className="value">{(detail.pass_rate * 100).toFixed(1)}%</span>
-                </div>
-                <div className="metric">
-                  <span className="label">Passed</span>
-                  <span className="value">
-                    {detail.passed_cases} / {detail.total_cases}
-                  </span>
-                </div>
-                <div className="metric">
-                  <span className="label">Avg score</span>
-                  <span className="value">{detail.average_score.toFixed(2)}</span>
-                </div>
-                <div className="metric">
-                  <span className="label">Avg latency</span>
-                  <span className="value">{detail.average_latency_ms.toFixed(0)} ms</span>
-                </div>
-              </div>
-
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Input</th>
-                    <th>Expected</th>
-                    <th>Actual</th>
-                    <th>Score</th>
-                    <th>Pass</th>
-                    <th>Latency</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {detail.results.map((row, index) => (
-                    <tr key={index}>
-                      <td>{row.input}</td>
-                      <td>{row.expected}</td>
-                      <td>{row.actual}</td>
-                      <td>{row.score.toFixed(2)}</td>
-                      <td>
-                        <span className={`badge ${row.passed ? "badge-ok" : "badge-fail"}`}>
-                          {row.passed ? "pass" : "fail"}
-                        </span>
-                      </td>
-                      <td>{row.latency_ms.toFixed(0)} ms</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <RunSummary run={detail} />
+              <EvalResultsTable results={detail.results} />
             </>
           )}
         </section>

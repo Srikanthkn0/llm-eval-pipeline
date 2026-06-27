@@ -1,82 +1,78 @@
-# Production Deployment Guide
+# Production Deployment
 
-Total cost: **₹0** with free tiers (Vercel + Render + Neon + Groq).
+Free-tier stack: Vercel + Render + Neon + Gemini API.
 
 ## Architecture
 
 | Component | Service | Purpose |
 |-----------|---------|---------|
-| Frontend | Vercel | React dashboard |
-| Backend API | Render (free) | FastAPI + gunicorn |
-| Database | Neon (free Postgres) | Durable datasets + eval history |
-| LLM inference | Google Gemini (free API key) | Real model responses on Render |
+| Frontend | Vercel | React dashboard (proxies API calls to Render) |
+| Backend | Render | FastAPI + gunicorn |
+| Database | Neon Postgres | Datasets and eval history |
+| LLM | Google Gemini | Inference from Render (Groq blocked on many cloud IPs) |
 
 ---
 
-## 1. Database — Neon Postgres (required for production)
+## 1. Database — Neon Postgres
 
-SQLite on Render free tier loses data on redeploy. Use Neon instead.
+SQLite on Render loses data on redeploy. Use Neon instead.
 
 1. Sign up at [neon.tech](https://neon.tech)
-2. Create a project → copy the **connection string**
-3. It looks like: `postgresql://user:pass@ep-xxx.region.aws.neon.tech/neondb?sslmode=require`
+2. Create a project and copy the connection string
+3. Format: `postgresql://user:pass@ep-xxx.region.aws.neon.tech/neondb?sslmode=require`
 
 ---
 
-## 2. LLM — Gemini API key (required for production on Render)
+## 2. LLM — Gemini API key
 
-**Why not Groq?** Groq blocks many cloud/datacenter IPs (Cloudflare error 1010). Gemini works from Render.
+Groq returns Cloudflare error 1010 from many datacenter IPs. Gemini works on Render.
 
-1. Go to [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
-2. Create a free API key
-3. Default production model: `gemini-2.0-flash`
-
-Mock model is disabled in production unless you set `ALLOW_MOCK_MODEL=true`.
+1. Create a key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
+2. Default models: `gemini-2.5-flash-lite` (fast) and `gemini-2.5-flash`
+3. Mock model is disabled in production unless `ALLOW_MOCK_MODEL=true`
 
 ---
 
 ## 3. Backend — Render
 
-1. [dashboard.render.com/blueprint/new](https://dashboard.render.com/blueprint/new?repo=https://github.com/Srikanthkn0/llm-eval-pipeline)
-2. Connect GitHub repo → **Apply**
-3. Set environment variables in Render dashboard:
+1. Open [Render Blueprint](https://dashboard.render.com/blueprint/new?repo=https://github.com/Srikanthkn0/llm-eval-pipeline)
+2. Connect the GitHub repo and apply
+3. Set environment variables:
 
 | Key | Value |
 |-----|-------|
-| `DATABASE_URL` | Your Neon connection string |
-| `GEMINI_API_KEY` | Your Google AI Studio API key |
+| `DATABASE_URL` | Neon connection string |
+| `GEMINI_API_KEY` | Google AI Studio key |
 | `FRONTEND_ORIGINS` | `https://llm-eval-pipeline.vercel.app` |
 | `GROQ_API_KEY` | _(optional — often blocked on Render)_ |
-| `OPENAI_API_KEY` | _(optional, for gpt-4o-mini)_ |
+| `OPENAI_API_KEY` | _(optional)_ |
 
-4. Wait for deploy → verify:
+4. Verify after deploy:
+
 ```bash
 curl https://llm-eval-pipeline-api.onrender.com/health
 ```
 
-Expected: `"status":"ok"`, `"database":"connected"`, `"gemini":true`
+Expected fields: `"status":"ok"`, `"database":"connected"`, `"llm_providers":{"gemini":true,...}`
 
 ---
 
 ## 4. Frontend — Vercel
 
-1. Import repo at [vercel.com](https://vercel.com), root: `frontend`
-2. Environment variable:
+1. Import the repo at [vercel.com](https://vercel.com) with root directory `frontend`
+2. **No `VITE_API_BASE_URL` needed** — `vercel.json` proxies `/api` and `/health` to Render
+3. Deploy → https://llm-eval-pipeline.vercel.app
 
-| Key | Value |
-|-----|-------|
-| `VITE_API_BASE_URL` | `https://llm-eval-pipeline-api.onrender.com` |
-
-3. Deploy → open https://llm-eval-pipeline.vercel.app
+Do not commit `frontend/.env` with localhost values. `.vercelignore` excludes it from CLI uploads.
 
 ---
 
 ## 5. Smoke test
 
-1. Dashboard shows **ok** status, Gemini **configured**
-2. Datasets tab shows seeded `sample` dataset
-3. Run eval with **Gemini 2.0 Flash** — progress bar advances
-4. Results tab shows completed run with pass rate
+1. Dashboard shows **ok** status and Gemini **configured**
+2. Datasets tab lists the seeded `sample` dataset (5 rows)
+3. Run eval with **Gemini 2.5 Flash-Lite** — progress bar advances
+4. Results tab shows the completed run with pass rate and per-case table
 
 ---
 
@@ -84,9 +80,10 @@ Expected: `"status":"ok"`, `"database":"connected"`, `"gemini":true`
 
 | Symptom | Fix |
 |---------|-----|
-| `status: degraded` on health | Add `GEMINI_API_KEY` on Render |
-| `error code: 1010` from Groq | Use Gemini instead — Groq blocks cloud IPs |
-| `database: unavailable` | Set valid `DATABASE_URL` from Neon |
-| CORS errors | Match `FRONTEND_ORIGINS` to exact Vercel URL |
-| Eval job fails instantly | Check Render logs; verify API key and dataset name |
-| Cold start slow (~30s) | Render free tier spins down after inactivity |
+| Backend unreachable on first load | Render free tier cold start — wait 30s and retry |
+| `status: degraded` | Add `GEMINI_API_KEY` on Render |
+| Groq error 1010 | Use Gemini instead |
+| `database: unavailable` | Check `DATABASE_URL` from Neon |
+| CORS errors | Match `FRONTEND_ORIGINS` to your Vercel URL |
+| Eval fails instantly | Check Render logs; verify dataset name and API key |
+| Frontend hits localhost | Redeploy without `frontend/.env` in the upload |

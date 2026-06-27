@@ -1,64 +1,57 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { fetchHealth, fetchStats, getApiBaseUrl } from "../api/client.js";
 
-const API_BASE_URL = getApiBaseUrl();
-
-export default function Dashboard() {
+export default function Dashboard({ onNavigate }) {
   const [health, setHealth] = useState(null);
   const [stats, setStats] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      try {
-        const [healthData, statsData] = await Promise.all([fetchHealth(), fetchStats()]);
-        if (!cancelled) {
-          setHealth(healthData);
-          setStats(statsData);
-          setError(null);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err.message);
-          setHealth(null);
-          setStats(null);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [healthData, statsData] = await Promise.all([fetchHealth(), fetchStats()]);
+      setHealth(healthData);
+      setStats(statsData);
+    } catch (err) {
+      setError(err.message);
+      setHealth(null);
+      setStats(null);
+    } finally {
+      setLoading(false);
     }
-
-    load();
-    return () => {
-      cancelled = true;
-    };
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   return (
     <section className="card">
       <h2>Dashboard</h2>
       <p className="card-description">
-        Production eval workspace. Upload datasets, run prompt evaluations against
-        real models, and track pass rate over time.
+        System health, provider configuration, and eval history at a glance.
       </p>
 
       <div className="status-grid">
         <div className="status-item">
-          <span className="label">API</span>
-          <span className="value mono">{API_BASE_URL}</span>
+          <span className="label">API endpoint</span>
+          <span className="value mono">{getApiBaseUrl()}</span>
         </div>
       </div>
 
-      {loading && <p className="status-text">Loading system status...</p>}
+      {loading && <p className="status-text">Checking backend status...</p>}
 
       {error && (
         <div className="alert alert-error">
-          <strong>API unreachable.</strong> {error}
+          <strong>Backend unreachable.</strong> {error}
+          <p className="hint">
+            Render&apos;s free tier sleeps after inactivity. Wait ~30 seconds, then retry.
+          </p>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={load}>
+            Retry connection
+          </button>
         </div>
       )}
 
@@ -130,10 +123,25 @@ export default function Dashboard() {
 
           {health.status === "degraded" && (
             <div className="alert alert-warn">
-              <strong>Degraded mode.</strong> Add <code>GEMINI_API_KEY</code> on the
-              backend (recommended on Render). Groq often fails on cloud hosts.
+              <strong>Degraded mode.</strong> Set <code>GEMINI_API_KEY</code> on Render for
+              live inference. Groq is often blocked from cloud hosts.
             </div>
           )}
+
+          <div className="quick-start">
+            <h3>Quick start</h3>
+            <ol>
+              <li>
+                Open <button type="button" className="btn-inline" onClick={() => onNavigate?.("datasets")}>Datasets</button> — upload a CSV or use the seeded <code>sample</code> set.
+              </li>
+              <li>
+                Go to <button type="button" className="btn-inline" onClick={() => onNavigate?.("run")}>Run eval</button> — pick a model and prompt template.
+              </li>
+              <li>
+                Review scores on <button type="button" className="btn-inline" onClick={() => onNavigate?.("results")}>Results</button>.
+              </li>
+            </ol>
+          </div>
         </>
       )}
     </section>

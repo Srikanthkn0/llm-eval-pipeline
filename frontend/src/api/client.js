@@ -4,7 +4,6 @@ function resolveApiBaseUrl() {
     configured.includes("localhost") || configured.includes("127.0.0.1");
 
   if (import.meta.env.PROD) {
-    // Ignore dev .env files accidentally uploaded to Vercel; use same-origin proxy.
     if (configured && !isLocalhost) {
       return configured;
     }
@@ -15,12 +14,16 @@ function resolveApiBaseUrl() {
 }
 
 const API_BASE_URL = resolveApiBaseUrl();
+const MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
 
 export function getApiBaseUrl() {
   if (API_BASE_URL) {
     return API_BASE_URL;
   }
-  return import.meta.env.PROD ? "same-origin (Vercel → Render proxy)" : "http://localhost:8000";
+  if (import.meta.env.PROD && typeof window !== "undefined") {
+    return window.location.origin;
+  }
+  return "http://localhost:8000";
 }
 
 async function parseResponse(response) {
@@ -52,7 +55,7 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 90000, retries = 
           "Request timed out. The API may be waking up on Render's free tier — wait 30 seconds and retry."
         );
       }
-      const target = API_BASE_URL || window.location.origin;
+      const target = API_BASE_URL || (typeof window !== "undefined" ? window.location.origin : "API");
       throw new Error(
         `Failed to reach API at ${target}. The backend may be starting up — refresh in 30 seconds.`
       );
@@ -84,11 +87,18 @@ export async function fetchDatasets() {
   return parseResponse(response);
 }
 
-export async function uploadDataset(file, name) {
+export async function uploadDataset(file, name, { replace = false } = {}) {
+  if (file.size > MAX_UPLOAD_BYTES) {
+    throw new Error("CSV must be 2 MB or smaller.");
+  }
+
   const formData = new FormData();
   formData.append("file", file);
   if (name) {
     formData.append("name", name);
+  }
+  if (replace) {
+    formData.append("replace", "true");
   }
 
   const response = await fetchWithTimeout(`${API_BASE_URL}/api/datasets/upload`, {
@@ -119,8 +129,19 @@ export async function fetchEvalJob(jobId) {
   return parseResponse(response);
 }
 
-export async function waitForEvalJob(jobId, { onProgress, intervalMs = 800 } = {}) {
+export async function waitForEvalJob(
+  jobId,
+  { onProgress, intervalMs = 800, timeoutMs = 15 * 60 * 1000 } = {}
+) {
+  const started = Date.now();
+
   while (true) {
+    if (Date.now() - started > timeoutMs) {
+      throw new Error(
+        "Evaluation timed out after 15 minutes. Check Results for partial progress or retry."
+      );
+    }
+
     const job = await fetchEvalJob(jobId);
     onProgress?.(job);
 

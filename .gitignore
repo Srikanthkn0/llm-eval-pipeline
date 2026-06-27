@@ -6,6 +6,7 @@ __pycache__/
 .mypy_cache/
 venv/
 .env
+.env.local
 
 # Node
 node_modules/
@@ -21,4 +22,6 @@ backend/app/data/datasets/*.csv
 backend/app/data/results/*.json
 backend/tests/tmp_data/
 .vercel
-.env*
+
+# Keep examples
+!.env.example

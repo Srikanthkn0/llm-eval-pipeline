@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -9,6 +10,9 @@ from app.config import settings
 from app.database import init_db
 from app.routes import datasets, evals, health
 from app.services.dataset_service import list_datasets, save_dataset
+from app.services.job_service import recover_stale_jobs
+
+logger = logging.getLogger(__name__)
 
 SAMPLE_DATASET = (
     Path(__file__).resolve().parent.parent / "sample_data" / "sample_eval.csv"
@@ -27,6 +31,9 @@ def _seed_sample_dataset() -> None:
 async def lifespan(_app: FastAPI):
     init_db()
     _seed_sample_dataset()
+    recovered = recover_stale_jobs()
+    if recovered:
+        logger.warning("Marked %s stale eval job(s) as failed on startup.", recovered)
     yield
 
 
@@ -59,10 +66,13 @@ async def http_exception_handler(_request: Request, exc: HTTPException):
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(_request: Request, exc: Exception):
-    return JSONResponse(
-        status_code=500,
-        content={"detail": f"Internal server error: {exc}"},
+    logger.exception("Unhandled error on %s", _request.url.path)
+    detail = (
+        "Internal server error."
+        if settings.is_production
+        else f"Internal server error: {exc}"
     )
+    return JSONResponse(status_code=500, content={"detail": detail})
 
 
 @app.get("/")

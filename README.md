@@ -1,31 +1,38 @@
-# LLM Eval CI/CD Pipeline
+# LLM Eval Pipeline
 
-Production-style evaluation platform for prompt and model quality checks. Upload CSV test cases, run async eval jobs against real LLMs, review metrics, and gate changes in GitHub Actions.
+A small evaluation platform for testing prompts and models against CSV test suites. Upload cases, run async eval jobs against live LLMs, review per-case scores, and gate regressions in CI.
 
-**Live demo:** https://llm-eval-pipeline.vercel.app  
+**Live:** https://llm-eval-pipeline.vercel.app  
 **API:** https://llm-eval-pipeline-api.onrender.com
 
-## Features
+## What it does
 
-- CSV dataset upload, validation, and deletion
-- Async eval jobs with live progress tracking
-- Real LLM inference via **Groq** (default) or **OpenAI**
-- Scoring: exact match, normalized match, keyword overlap
-- Persistent storage via **PostgreSQL** (Neon) in production
-- Dashboard with system health, provider status, and run stats
-- GitHub Actions CI with pass-rate gate
+1. **Datasets** — upload CSV files with `input` and `expected_output` columns
+2. **Eval jobs** — run each row through a prompt template and score the model response
+3. **Results** — pass rate, per-case breakdown, and run history stored in Postgres
+4. **CI gate** — GitHub Actions runs the sample suite and fails if pass rate drops below 80%
 
-## Stack
+## Architecture
+
+```
+Browser
+   │
+   ▼
+Vercel (React) ──proxy /api, /health──► Render (FastAPI)
+                                              │
+                                              ├── Neon Postgres
+                                              └── Gemini API
+```
 
 | Layer | Tech |
 |-------|------|
 | Backend | FastAPI, gunicorn, SQLite (local) / PostgreSQL (prod) |
 | Frontend | React, Vite |
-| LLM | Groq API, OpenAI API |
-| CI | GitHub Actions |
-| Deploy | Render + Vercel + Neon (all free tier) |
+| LLM | Gemini (production on Render), Groq/OpenAI optional, mock for CI |
+| CI | GitHub Actions + pass-rate gate |
+| Deploy | Render + Vercel + Neon (free tier) |
 
-## Local setup
+## Local development
 
 ```bash
 # Backend
@@ -33,36 +40,50 @@ cd backend
 python3 -m venv venv && source venv/bin/activate
 pip install -r requirements-dev.txt
 cp .env.example .env
-# Optional: add GROQ_API_KEY for real inference locally
 uvicorn app.main:app --reload --port 8000
 
-# Frontend
+# Frontend (separate terminal)
 cd frontend
 npm install && cp .env.example .env
 npm run dev
 ```
 
-Mock model (`mock-model-v1`) is enabled locally for testing without API keys.
+Open http://localhost:5173. The mock model (`mock-model-v1`) works without API keys.
 
-## Production setup
+## Production deploy
 
-See **[DEPLOYMENT.md](DEPLOYMENT.md)** — requires free Neon Postgres + Groq API key.
+See **[DEPLOYMENT.md](DEPLOYMENT.md)** for Render, Vercel, Neon, and Gemini setup.
 
-## API highlights
+## API
 
-```
-GET  /health
-GET  /api/models
-GET  /api/stats
-POST /api/datasets/upload
-DELETE /api/datasets/{name}
-POST /api/evals/run          → returns job_id
-GET  /api/evals/jobs/{id}    → poll progress
-GET  /api/evals/runs/{id}    → full results
-```
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | System status and provider config |
+| GET | `/api/models` | Available models |
+| GET | `/api/stats` | Dashboard aggregates |
+| POST | `/api/datasets/upload` | Upload CSV (`replace=true` to overwrite) |
+| DELETE | `/api/datasets/{name}` | Delete dataset |
+| POST | `/api/evals/run` | Start eval job → `job_id` |
+| GET | `/api/evals/jobs/{id}` | Poll job progress |
+| GET | `/api/evals/runs` | List past runs |
+| GET | `/api/evals/runs/{id}` | Full run with per-case results |
 
-## Resume talking points
+Interactive docs: https://llm-eval-pipeline-api.onrender.com/docs
 
-- Built production eval platform with async job processing, real LLM provider routing, and Postgres persistence
-- Deployed split-stack app (FastAPI/Render + React/Vercel) with health monitoring and CORS
-- Integrated GitHub Actions quality gate enforcing pass-rate thresholds on every push
+## CI
+
+On every push to `main`, GitHub Actions:
+
+1. Runs backend unit + API tests (`pytest`)
+2. Executes eval against `sample_eval.csv` with the mock model
+3. Fails the build if pass rate &lt; 80%
+
+## Project notes
+
+- **Scoring:** exact match, normalized text match, and keyword overlap (0.8 threshold)
+- **Async jobs:** evals run in background tasks with progress polling — suited for slow LLM APIs
+- **Render free tier:** API sleeps after ~15 min idle; first request may take 30–60s to wake
+
+## License
+
+MIT — see [LICENSE](LICENSE).

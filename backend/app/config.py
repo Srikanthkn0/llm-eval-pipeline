@@ -36,6 +36,8 @@ class Settings:
     }
     LLM_REQUEST_TIMEOUT_SEC: int = int(os.getenv("LLM_REQUEST_TIMEOUT_SEC", "60"))
     LLM_MAX_RETRIES: int = int(os.getenv("LLM_MAX_RETRIES", "2"))
+    MAX_UPLOAD_BYTES: int = int(os.getenv("MAX_UPLOAD_BYTES", str(2 * 1024 * 1024)))
+    STALE_JOB_MINUTES: int = int(os.getenv("STALE_JOB_MINUTES", "30"))
 
     @property
     def use_postgres(self) -> bool:

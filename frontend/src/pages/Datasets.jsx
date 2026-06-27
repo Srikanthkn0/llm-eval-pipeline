@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
 import { deleteDataset, fetchDatasets, uploadDataset } from "../api/client.js";
 
+const MAX_UPLOAD_MB = 2;
+
 export default function Datasets() {
   const [datasets, setDatasets] = useState([]);
   const [file, setFile] = useState(null);
   const [name, setName] = useState("");
+  const [replaceExisting, setReplaceExisting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(null);
@@ -40,10 +44,13 @@ export default function Datasets() {
     setSuccess(null);
 
     try {
-      const result = await uploadDataset(file, name.trim() || undefined);
+      const result = await uploadDataset(file, name.trim() || undefined, {
+        replace: replaceExisting,
+      });
       setSuccess(result.message);
       setFile(null);
       setName("");
+      setReplaceExisting(false);
       event.target.reset();
       await loadDatasets();
     } catch (err) {
@@ -54,10 +61,6 @@ export default function Datasets() {
   }
 
   async function handleDelete(datasetName) {
-    if (!window.confirm(`Delete dataset "${datasetName}"? This cannot be undone.`)) {
-      return;
-    }
-
     setDeleting(datasetName);
     setError(null);
     setSuccess(null);
@@ -65,6 +68,7 @@ export default function Datasets() {
     try {
       const result = await deleteDataset(datasetName);
       setSuccess(result.message);
+      setConfirmDelete(null);
       await loadDatasets();
     } catch (err) {
       setError(err.message);
@@ -78,8 +82,8 @@ export default function Datasets() {
       <section className="card">
         <h2>Upload dataset</h2>
         <p className="card-description">
-          CSV needs columns <code>input</code> and <code>expected_output</code>.
-          Optional column: <code>category</code>.
+          Required columns: <code>input</code>, <code>expected_output</code>. Optional:{" "}
+          <code>category</code>. Max file size: {MAX_UPLOAD_MB} MB.
         </p>
 
         <form className="form" onSubmit={handleSubmit}>
@@ -100,6 +104,15 @@ export default function Datasets() {
               value={name}
               onChange={(event) => setName(event.target.value)}
             />
+          </label>
+
+          <label className="field field-checkbox">
+            <input
+              type="checkbox"
+              checked={replaceExisting}
+              onChange={(event) => setReplaceExisting(event.target.checked)}
+            />
+            <span>Replace existing dataset with the same name</span>
           </label>
 
           <button type="submit" className="btn btn-primary" disabled={uploading}>
@@ -139,15 +152,35 @@ export default function Datasets() {
                   <td>{dataset.name}</td>
                   <td>{dataset.file_name}</td>
                   <td>{dataset.row_count}</td>
-                  <td>
-                    <button
-                      type="button"
-                      className="btn btn-link btn-danger"
-                      disabled={deleting === dataset.name}
-                      onClick={() => handleDelete(dataset.name)}
-                    >
-                      {deleting === dataset.name ? "Deleting..." : "Delete"}
-                    </button>
+                  <td className="table-actions">
+                    {confirmDelete === dataset.name ? (
+                      <span className="confirm-row">
+                        <span>Delete?</span>
+                        <button
+                          type="button"
+                          className="btn btn-link btn-danger"
+                          disabled={deleting === dataset.name}
+                          onClick={() => handleDelete(dataset.name)}
+                        >
+                          {deleting === dataset.name ? "Deleting..." : "Yes"}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-link"
+                          onClick={() => setConfirmDelete(null)}
+                        >
+                          Cancel
+                        </button>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn btn-link btn-danger"
+                        onClick={() => setConfirmDelete(dataset.name)}
+                      >
+                        Delete
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

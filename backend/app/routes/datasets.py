@@ -1,5 +1,6 @@
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
+from app.config import settings
 from app.models import DatasetListResponse, DatasetUploadResponse
 from app.services import dataset_service
 
@@ -15,6 +16,7 @@ async def list_datasets():
 async def upload_dataset(
     file: UploadFile = File(...),
     name: str | None = Form(None),
+    replace: bool = Form(False),
 ):
     if not file.filename or not file.filename.lower().endswith(".csv"):
         raise HTTPException(
@@ -23,6 +25,12 @@ async def upload_dataset(
         )
 
     content_bytes = await file.read()
+    if len(content_bytes) > settings.MAX_UPLOAD_BYTES:
+        limit_mb = settings.MAX_UPLOAD_BYTES / (1024 * 1024)
+        raise HTTPException(
+            status_code=413,
+            detail=f"CSV exceeds the {limit_mb:.0f} MB upload limit.",
+        )
     try:
         content = content_bytes.decode("utf-8")
     except UnicodeDecodeError as exc:
@@ -32,7 +40,7 @@ async def upload_dataset(
         ) from exc
 
     dataset_name = name or file.filename.rsplit(".", 1)[0]
-    dataset = dataset_service.save_dataset(dataset_name, content)
+    dataset = dataset_service.save_dataset(dataset_name, content, replace=replace)
 
     return DatasetUploadResponse(
         message=f"Dataset '{dataset.name}' uploaded with {dataset.row_count} rows.",

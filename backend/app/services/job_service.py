@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from fastapi import HTTPException
 
+from app.config import settings
 from app.database import execute, fetchone, get_connection, ph
 from app.models import EvalJobResponse, EvalRunRequest
 from app.services.eval_runner import run_evaluation
@@ -129,6 +130,29 @@ async def run_job(job_id: str, request: EvalRunRequest) -> None:
 def queue_job(request: EvalRunRequest) -> EvalJobResponse:
     validate_model_choice(request.model_name)
     return create_job(request)
+
+
+def recover_stale_jobs() -> int:
+    """Mark jobs stuck in queued/running as failed after a server restart."""
+    cutoff = datetime.now(timezone.utc).timestamp() - (settings.STALE_JOB_MINUTES * 60)
+    stale_before = datetime.fromtimestamp(cutoff, tz=timezone.utc).isoformat()
+    now = _now()
+    message = (
+        f"Job interrupted after {settings.STALE_JOB_MINUTES} minutes without completion. "
+        "Re-run the evaluation."
+    )
+
+    with get_connection() as conn:
+        cursor = execute(
+            conn,
+            f"""
+            UPDATE eval_jobs
+            SET status = {ph()}, error = {ph()}, updated_at = {ph()}
+            WHERE status IN ('queued', 'running') AND updated_at < {ph()}
+            """,
+            ("failed", message, now, stale_before),
+        )
+        return cursor.rowcount if cursor.rowcount is not None else 0
 
 
 async def run_job_and_wait(

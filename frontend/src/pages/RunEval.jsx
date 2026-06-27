@@ -6,11 +6,13 @@ import {
   startEvalJob,
   waitForEvalJob,
 } from "../api/client.js";
+import EvalResultsTable from "../components/EvalResultsTable.jsx";
+import RunSummary from "../components/RunSummary.jsx";
 
 const DEFAULT_PROMPT =
   "Answer the question briefly.\n\nQuestion: {input}\nAnswer:";
 
-export default function RunEval({ onRunComplete }) {
+export default function RunEval({ onRunComplete, onNavigate }) {
   const [datasets, setDatasets] = useState([]);
   const [models, setModels] = useState([]);
   const [datasetName, setDatasetName] = useState("");
@@ -89,19 +91,28 @@ export default function RunEval({ onRunComplete }) {
       <section className="card">
         <h2>Run evaluation</h2>
         <p className="card-description">
-          Evaluations run as background jobs with live progress. Use Gemini on
-          Render (Groq is blocked on many cloud servers). Mock is for local dev/CI only.
+          Each test case is sent to the selected model, scored against the expected
+          output, and saved as a run you can compare over time.
         </p>
 
         {loading && <p className="status-text">Loading datasets and models...</p>}
 
         {!loading && datasets.length === 0 && (
-          <p className="status-text">Upload a dataset before running an eval.</p>
+          <div className="empty-state">
+            <p>No datasets yet.</p>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => onNavigate?.("datasets")}
+            >
+              Upload a dataset
+            </button>
+          </div>
         )}
 
         {!loading && models.length === 0 && (
           <div className="alert alert-warn">
-            No models available. Configure <code>GEMINI_API_KEY</code> on the backend.
+            No models available. Add <code>GEMINI_API_KEY</code> on the Render backend.
           </div>
         )}
 
@@ -128,7 +139,7 @@ export default function RunEval({ onRunComplete }) {
                 value={promptTemplate}
                 onChange={(event) => setPromptTemplate(event.target.value)}
               />
-              <span className="field-hint">Include {"{input}"} where the test case goes.</span>
+              <span className="field-hint">Use {"{input}"} where each test case should go.</span>
             </label>
 
             <label className="field">
@@ -175,59 +186,8 @@ export default function RunEval({ onRunComplete }) {
       {result && (
         <section className="card">
           <h2>Run summary</h2>
-          <div className="metrics-grid">
-            <div className="metric">
-              <span className="label">Run ID</span>
-              <span className="value mono">{result.run_id}</span>
-            </div>
-            <div className="metric">
-              <span className="label">Pass rate</span>
-              <span className="value">{(result.pass_rate * 100).toFixed(1)}%</span>
-            </div>
-            <div className="metric">
-              <span className="label">Passed</span>
-              <span className="value">
-                {result.passed_cases} / {result.total_cases}
-              </span>
-            </div>
-            <div className="metric">
-              <span className="label">Avg score</span>
-              <span className="value">{result.average_score.toFixed(2)}</span>
-            </div>
-            <div className="metric">
-              <span className="label">Avg latency</span>
-              <span className="value">{result.average_latency_ms.toFixed(0)} ms</span>
-            </div>
-          </div>
-
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Input</th>
-                <th>Expected</th>
-                <th>Actual</th>
-                <th>Score</th>
-                <th>Pass</th>
-                <th>Latency</th>
-              </tr>
-            </thead>
-            <tbody>
-              {result.results.map((row, index) => (
-                <tr key={index}>
-                  <td>{row.input}</td>
-                  <td>{row.expected}</td>
-                  <td>{row.actual}</td>
-                  <td>{row.score.toFixed(2)}</td>
-                  <td>
-                    <span className={`badge ${row.passed ? "badge-ok" : "badge-fail"}`}>
-                      {row.passed ? "pass" : "fail"}
-                    </span>
-                  </td>
-                  <td>{row.latency_ms.toFixed(0)} ms</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <RunSummary run={result} />
+          <EvalResultsTable results={result.results} />
         </section>
       )}
     </div>

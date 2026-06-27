@@ -32,7 +32,7 @@ Confirm GitHub Actions passes on the first push.
 
 1. Render Dashboard → **New** → **Blueprint**
 2. Connect your GitHub repo
-3. Render reads `backend/render.yaml` automatically
+3. Render reads `render.yaml` at the **repo root** automatically
 4. Set these env vars when prompted:
    - `FRONTEND_ORIGINS` → your Vercel URL (set after step 3, then update)
    - `OPENAI_API_KEY` → optional, for real OpenAI evals

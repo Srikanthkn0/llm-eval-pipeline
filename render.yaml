@@ -1,5 +1,5 @@
 # Render Blueprint — free tier (no persistent disk; sample dataset auto-seeds on startup)
-# Docs: https://render.com/docs/blueprint-spec
+# Must live at repo root. Docs: https://render.com/docs/blueprint-spec
 
 services:
   - type: web

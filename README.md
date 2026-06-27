@@ -37,11 +37,11 @@ llm-eval-pipeline/
 │   │   └── services/         # eval runner, scoring, LLM client
 │   ├── tests/                # unit + API integration tests
 │   ├── scripts/run_ci_eval.py
-│   ├── requirements.txt
-│   └── render.yaml
+│   └── requirements.txt
 ├── frontend/
 │   └── src/pages/            # Dashboard, Datasets, Run Eval, Results
 ├── .github/workflows/ci.yml
+├── render.yaml               # Render Blueprint (repo root)
 └── DEPLOYMENT.md
 ```
 

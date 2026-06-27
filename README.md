@@ -11,6 +11,18 @@ CSV-based evaluation platform for prompt and model quality checks. Upload test c
 | **API** | https://llm-eval-pipeline-api.onrender.com |
 | **API docs** | https://llm-eval-pipeline-api.onrender.com/docs |
 
+## Screenshots
+
+| Overview | Datasets |
+|:---:|:---:|
+| ![Overview dashboard](docs/screenshots/overview.png) | ![Dataset upload and management](docs/screenshots/datasets.png) |
+| Pass rate, system status, provider config | CSV upload with validation and saved datasets |
+
+| Run | Results |
+|:---:|:---:|
+| ![Eval job in progress](docs/screenshots/run.png) | ![Run history and per-case scores](docs/screenshots/results.png) |
+| Async eval with live progress | History table and per-case breakdown |
+
 ## Features
 
 - Upload and validate CSV datasets (`input`, `expected_output`, optional `category`)
@@ -49,11 +61,12 @@ flowchart LR
 
 ```
 llm-eval-pipeline/
-  backend/           FastAPI API, eval engine, pytest suite
-  frontend/          React dashboard
-  render.yaml        Render blueprint (backend)
-  .github/workflows/ CI pipeline
-  DEPLOYMENT.md      Production setup guide
+  backend/              FastAPI API, eval engine, pytest suite
+  frontend/             React dashboard
+  docs/screenshots/     README screenshots
+  render.yaml           Render blueprint (backend)
+  .github/workflows/    CI pipeline
+  DEPLOYMENT.md         Production setup guide
 ```
 
 ## Local development

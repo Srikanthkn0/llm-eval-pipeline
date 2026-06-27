@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { fetchHealth, fetchStats, getApiBaseUrl } from "../api/client.js";
 
+function StatusDot({ ok, warn }) {
+  const cls = ok ? "dot-ok" : warn ? "dot-warn" : "dot-muted";
+  return <span className={`dot ${cls}`} aria-hidden="true" />;
+}
+
 export default function Dashboard({ onNavigate }) {
   const [health, setHealth] = useState(null);
   const [stats, setStats] = useState(null);
@@ -28,122 +33,111 @@ export default function Dashboard({ onNavigate }) {
   }, [load]);
 
   return (
-    <section className="card">
-      <h2>Dashboard</h2>
-      <p className="card-description">
-        System health, provider configuration, and eval history at a glance.
-      </p>
+    <div className="stack">
+      <header className="page-header">
+        <h2>Overview</h2>
+        <p>Backend status and eval history.</p>
+      </header>
 
-      <div className="status-grid">
-        <div className="status-item">
-          <span className="label">API endpoint</span>
-          <span className="value mono">{getApiBaseUrl()}</span>
-        </div>
-      </div>
+      <section className="card">
+        {loading && <p className="status-text">Connecting…</p>}
 
-      {loading && <p className="status-text">Checking backend status...</p>}
-
-      {error && (
-        <div className="alert alert-error">
-          <strong>Backend unreachable.</strong> {error}
-          <p className="hint">
-            Render&apos;s free tier sleeps after inactivity. Wait ~30 seconds, then retry.
-          </p>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={load}>
-            Retry connection
-          </button>
-        </div>
-      )}
-
-      {health && (
-        <>
-          <div className="metrics-grid">
-            <div className="metric">
-              <span className="label">System</span>
-              <span className={`value badge ${health.status === "ok" ? "badge-ok" : "badge-warn"}`}>
-                {health.status}
-              </span>
-            </div>
-            <div className="metric">
-              <span className="label">Database</span>
-              <span className="value">{health.database}</span>
-            </div>
-            <div className="metric">
-              <span className="label">Environment</span>
-              <span className="value">{health.environment}</span>
-            </div>
-            <div className="metric">
-              <span className="label">Gemini</span>
-              <span className="value">
-                {health.llm_providers?.gemini ? "configured" : "not set"}
-              </span>
-            </div>
-            <div className="metric">
-              <span className="label">Groq</span>
-              <span className="value">
-                {health.llm_providers?.groq ? "configured" : "not set"}
-              </span>
-            </div>
-            <div className="metric">
-              <span className="label">OpenAI</span>
-              <span className="value">
-                {health.llm_providers?.openai ? "configured" : "not set"}
-              </span>
-            </div>
+        {error && (
+          <div className="alert alert-error">
+            <strong>Can&apos;t reach backend.</strong> {error}
+            <p className="hint">Render free tier sleeps after idle — wait ~30s, then retry.</p>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={load}>
+              Retry
+            </button>
           </div>
+        )}
 
-          {stats && (
-            <div className="metrics-grid">
-              <div className="metric">
-                <span className="label">Datasets</span>
-                <span className="value">{stats.dataset_count}</span>
-              </div>
-              <div className="metric">
-                <span className="label">Total runs</span>
-                <span className="value">{stats.run_count}</span>
-              </div>
-              <div className="metric">
-                <span className="label">Latest pass rate</span>
-                <span className="value">
-                  {stats.latest_pass_rate != null
+        {health && (
+          <>
+            <div className="stat-row">
+              <div className="stat">
+                <span className="stat-label">Pass rate</span>
+                <span className="stat-value stat-value-lg">
+                  {stats?.latest_pass_rate != null
                     ? `${(stats.latest_pass_rate * 100).toFixed(1)}%`
                     : "—"}
                 </span>
               </div>
-              <div className="metric">
-                <span className="label">Latest avg score</span>
-                <span className="value">
-                  {stats.latest_average_score != null
+              <div className="stat">
+                <span className="stat-label">Runs</span>
+                <span className="stat-value">{stats?.run_count ?? 0}</span>
+              </div>
+              <div className="stat">
+                <span className="stat-label">Datasets</span>
+                <span className="stat-value">{stats?.dataset_count ?? 0}</span>
+              </div>
+              <div className="stat">
+                <span className="stat-label">Avg score</span>
+                <span className="stat-value">
+                  {stats?.latest_average_score != null
                     ? stats.latest_average_score.toFixed(2)
                     : "—"}
                 </span>
               </div>
             </div>
-          )}
 
-          {health.status === "degraded" && (
-            <div className="alert alert-warn">
-              <strong>Degraded mode.</strong> Set <code>GEMINI_API_KEY</code> on Render for
-              live inference. Groq is often blocked from cloud hosts.
+            <h3>System</h3>
+            <div className="status-list">
+              <div className="status-list-item">
+                <span className="label">API</span>
+                <span className="value mono">{getApiBaseUrl()}</span>
+              </div>
+              <div className="status-list-item">
+                <span className="label">Status</span>
+                <span className="value">
+                  <StatusDot ok={health.status === "ok"} warn={health.status === "degraded"} />
+                  {health.status}
+                </span>
+              </div>
+              <div className="status-list-item">
+                <span className="label">Database</span>
+                <span className="value">{health.database}</span>
+              </div>
+              <div className="status-list-item">
+                <span className="label">Gemini</span>
+                <span className="value">
+                  {health.llm_providers?.gemini ? "yes" : "no"}
+                </span>
+              </div>
+              <div className="status-list-item">
+                <span className="label">Groq</span>
+                <span className="value">
+                  {health.llm_providers?.groq ? "yes" : "no"}
+                </span>
+              </div>
+              <div className="status-list-item">
+                <span className="label">OpenAI</span>
+                <span className="value">
+                  {health.llm_providers?.openai ? "yes" : "no"}
+                </span>
+              </div>
             </div>
-          )}
 
-          <div className="quick-start">
-            <h3>Quick start</h3>
-            <ol>
-              <li>
-                Open <button type="button" className="btn-inline" onClick={() => onNavigate?.("datasets")}>Datasets</button> — upload a CSV or use the seeded <code>sample</code> set.
-              </li>
-              <li>
-                Go to <button type="button" className="btn-inline" onClick={() => onNavigate?.("run")}>Run eval</button> — pick a model and prompt template.
-              </li>
-              <li>
-                Review scores on <button type="button" className="btn-inline" onClick={() => onNavigate?.("results")}>Results</button>.
-              </li>
-            </ol>
-          </div>
-        </>
-      )}
-    </section>
+            {health.status === "degraded" && (
+              <div className="alert alert-warn">
+                No LLM key configured. Set <code>GEMINI_API_KEY</code> on Render.
+              </div>
+            )}
+
+            <p className="section-note">
+              Upload a CSV on{" "}
+              <button type="button" className="btn-inline" onClick={() => onNavigate?.("datasets")}>
+                Datasets
+              </button>
+              , run on{" "}
+              <button type="button" className="btn-inline" onClick={() => onNavigate?.("run")}>
+                Run
+              </button>
+              . Sample dataset <code>sample</code> is preloaded.
+            </p>
+          </>
+        )}
+      </section>
+    </div>
   );
 }

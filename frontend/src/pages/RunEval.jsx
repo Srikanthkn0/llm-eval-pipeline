@@ -88,31 +88,30 @@ export default function RunEval({ onRunComplete, onNavigate }) {
 
   return (
     <div className="stack">
-      <section className="card">
-        <h2>Run evaluation</h2>
-        <p className="card-description">
-          Each test case is sent to the selected model, scored against the expected
-          output, and saved as a run you can compare over time.
-        </p>
+      <header className="page-header">
+        <h2>Run</h2>
+        <p>Send each row through your prompt, score the response, save the run.</p>
+      </header>
 
-        {loading && <p className="status-text">Loading datasets and models...</p>}
+      <section className="card">
+        {loading && <p className="status-text">Loading…</p>}
 
         {!loading && datasets.length === 0 && (
           <div className="empty-state">
-            <p>No datasets yet.</p>
+            <p>No datasets.</p>
             <button
               type="button"
               className="btn btn-primary"
               onClick={() => onNavigate?.("datasets")}
             >
-              Upload a dataset
+              Go to Datasets
             </button>
           </div>
         )}
 
-        {!loading && models.length === 0 && (
+        {!loading && models.length === 0 && datasets.length > 0 && (
           <div className="alert alert-warn">
-            No models available. Add <code>GEMINI_API_KEY</code> on the Render backend.
+            No models available — set <code>GEMINI_API_KEY</code> on the backend.
           </div>
         )}
 
@@ -133,16 +132,6 @@ export default function RunEval({ onRunComplete, onNavigate }) {
             </label>
 
             <label className="field">
-              <span>Prompt template</span>
-              <textarea
-                rows={5}
-                value={promptTemplate}
-                onChange={(event) => setPromptTemplate(event.target.value)}
-              />
-              <span className="field-hint">Use {"{input}"} where each test case should go.</span>
-            </label>
-
-            <label className="field">
               <span>Model</span>
               <select
                 value={modelName}
@@ -156,8 +145,18 @@ export default function RunEval({ onRunComplete, onNavigate }) {
               </select>
             </label>
 
+            <label className="field">
+              <span>Prompt</span>
+              <textarea
+                rows={5}
+                value={promptTemplate}
+                onChange={(event) => setPromptTemplate(event.target.value)}
+              />
+              <span className="field-hint">{"{input}"} = test case text</span>
+            </label>
+
             <button type="submit" className="btn btn-primary" disabled={running}>
-              {running ? "Running evaluation..." : "Run eval"}
+              {running ? "Running…" : "Run eval"}
             </button>
           </form>
         )}
@@ -165,9 +164,9 @@ export default function RunEval({ onRunComplete, onNavigate }) {
         {running && job && (
           <div className="progress-block">
             <div className="progress-meta">
-              <span>Status: {job.status}</span>
+              <span>{job.status}</span>
               <span>
-                {job.progress} / {job.total || "—"} cases
+                {job.progress}/{job.total || "—"}
               </span>
             </div>
             <div className="progress-track">
@@ -178,14 +177,14 @@ export default function RunEval({ onRunComplete, onNavigate }) {
 
         {error && (
           <div className="alert alert-error">
-            <strong>Run failed.</strong> {error}
+            <strong>Failed.</strong> {error}
           </div>
         )}
       </section>
 
       {result && (
         <section className="card">
-          <h2>Run summary</h2>
+          <h3>Results</h3>
           <RunSummary run={result} />
           <EvalResultsTable results={result.results} />
         </section>

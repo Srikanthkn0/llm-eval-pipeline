@@ -5,9 +5,9 @@ import RunEval from "./pages/RunEval.jsx";
 import Results from "./pages/Results.jsx";
 
 const TABS = [
-  { id: "dashboard", label: "Dashboard" },
+  { id: "dashboard", label: "Overview" },
   { id: "datasets", label: "Datasets" },
-  { id: "run", label: "Run eval" },
+  { id: "run", label: "Run" },
   { id: "results", label: "Results" },
 ];
 
@@ -30,27 +30,26 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <div className="header-top">
-          <div>
-            <h1>LLM Eval Pipeline</h1>
-            <p className="subtitle">
-              CSV test suites, async eval jobs, and pass-rate tracking for prompt changes
-            </p>
+        <div className="header-inner">
+          <div className="brand">
+            <div className="brand-mark" aria-hidden="true" />
+            <h1>LLM Eval</h1>
           </div>
+          <nav className="nav-tabs" aria-label="Main">
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                className={`nav-tab ${activeTab === tab.id ? "nav-tab-active" : ""}`}
+                onClick={() => navigate(tab.id)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
         </div>
-        <nav className="nav-tabs" aria-label="Main navigation">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              className={`nav-tab ${activeTab === tab.id ? "nav-tab-active" : ""}`}
-              onClick={() => navigate(tab.id)}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
       </header>
+
       <main className="app-main">
         {activeTab === "dashboard" && <Dashboard onNavigate={navigate} />}
         {activeTab === "datasets" && <Datasets />}
@@ -61,18 +60,16 @@ export default function App() {
           <Results selectedRunId={selectedRunId} onSelectRun={setSelectedRunId} />
         )}
       </main>
+
       <footer className="app-footer">
-        <a href={GITHUB_URL} target="_blank" rel="noreferrer">
-          Source
-        </a>
-        <span className="footer-sep">·</span>
-        <a href={`${API_URL}/docs`} target="_blank" rel="noreferrer">
-          API docs
-        </a>
-        <span className="footer-sep">·</span>
-        <a href="https://llm-eval-pipeline.vercel.app" target="_blank" rel="noreferrer">
-          Live demo
-        </a>
+        <div className="footer-inner">
+          <a href={GITHUB_URL} target="_blank" rel="noreferrer">
+            GitHub
+          </a>
+          <a href={`${API_URL}/docs`} target="_blank" rel="noreferrer">
+            API
+          </a>
+        </div>
       </footer>
     </div>
   );

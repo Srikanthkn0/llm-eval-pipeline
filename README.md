@@ -2,7 +2,8 @@
 
 Full-stack web app for running prompt evaluations against CSV test datasets. Upload cases, configure a prompt template and model, execute evals, inspect per-case metrics, and gate changes in GitHub Actions before they ship.
 
-**Live demo:** _Add your Vercel URL after deploying (see [DEPLOYMENT.md](DEPLOYMENT.md))_
+**Live demo:** https://llm-eval-pipeline.vercel.app  
+**API:** https://llm-eval-pipeline-api.onrender.com _(deploy backend via [DEPLOYMENT.md](DEPLOYMENT.md) if not live yet)_
 
 ## What it does
 

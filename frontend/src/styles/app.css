@@ -63,12 +63,9 @@ body {
   min-width: 0;
 }
 
-.brand-mark {
-  width: 22px;
-  height: 22px;
-  background: var(--accent);
-  border-radius: var(--radius);
+.logo {
   flex-shrink: 0;
+  display: block;
 }
 
 .brand h1 {

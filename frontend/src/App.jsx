@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Logo from "./components/Logo.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Datasets from "./pages/Datasets.jsx";
 import RunEval from "./pages/RunEval.jsx";
@@ -32,7 +33,7 @@ export default function App() {
       <header className="app-header">
         <div className="header-inner">
           <div className="brand">
-            <div className="brand-mark" aria-hidden="true" />
+            <Logo size={26} />
             <h1>LLM Eval</h1>
           </div>
           <nav className="nav-tabs" aria-label="Main">

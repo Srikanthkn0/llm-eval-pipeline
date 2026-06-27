@@ -94,7 +94,7 @@ export default function RunEval({ onRunComplete, onNavigate }) {
       </header>
 
       <section className="card">
-        {loading && <p className="status-text">Loading…</p>}
+        {loading && <p className="status-text">Loading...</p>}
 
         {!loading && datasets.length === 0 && (
           <div className="empty-state">
@@ -111,7 +111,7 @@ export default function RunEval({ onRunComplete, onNavigate }) {
 
         {!loading && models.length === 0 && datasets.length > 0 && (
           <div className="alert alert-warn">
-            No models available — set <code>GEMINI_API_KEY</code> on the backend.
+            No models available. Set <code>GEMINI_API_KEY</code> on the backend.
           </div>
         )}
 
@@ -156,7 +156,7 @@ export default function RunEval({ onRunComplete, onNavigate }) {
             </label>
 
             <button type="submit" className="btn btn-primary" disabled={running}>
-              {running ? "Running…" : "Run eval"}
+              {running ? "Running..." : "Run eval"}
             </button>
           </form>
         )}
@@ -166,7 +166,7 @@ export default function RunEval({ onRunComplete, onNavigate }) {
             <div className="progress-meta">
               <span>{job.status}</span>
               <span>
-                {job.progress}/{job.total || "—"}
+                {job.progress}/{job.total || "-"}
               </span>
             </div>
             <div className="progress-track">

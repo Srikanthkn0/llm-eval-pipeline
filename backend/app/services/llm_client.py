@@ -36,7 +36,7 @@ MODEL_REGISTRY = {
     },
     "llama-3.1-8b-instant": {
         "provider": "groq",
-        "label": "Llama 3.1 8B (Groq — may fail on cloud hosts)",
+        "label": "Llama 3.1 8B (Groq, may fail on cloud hosts)",
         "requires_key": "GROQ_API_KEY",
     },
     "gpt-4o-mini": {

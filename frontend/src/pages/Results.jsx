@@ -76,7 +76,7 @@ export default function Results({ selectedRunId, onSelectRun }) {
           </button>
         </div>
 
-        {loading && <p className="status-text">Loading…</p>}
+        {loading && <p className="status-text">Loading...</p>}
 
         {!loading && runs.length === 0 && (
           <p className="status-text">No runs yet.</p>
@@ -131,7 +131,7 @@ export default function Results({ selectedRunId, onSelectRun }) {
       {(detail || detailLoading) && (
         <section className="card">
           <h3>Detail</h3>
-          {detailLoading && <p className="status-text">Loading…</p>}
+          {detailLoading && <p className="status-text">Loading...</p>}
           {detail && (
             <>
               <RunSummary run={detail} />

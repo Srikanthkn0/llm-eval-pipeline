@@ -119,7 +119,7 @@ export default function Datasets() {
           </label>
 
           <button type="submit" className="btn btn-primary" disabled={uploading}>
-            {uploading ? "Uploading…" : "Upload"}
+            {uploading ? "Uploading..." : "Upload"}
           </button>
         </form>
 
@@ -133,7 +133,7 @@ export default function Datasets() {
 
       <section className="card">
         <h3>Saved</h3>
-        {loading && <p className="status-text">Loading…</p>}
+        {loading && <p className="status-text">Loading...</p>}
 
         {!loading && datasets.length === 0 && (
           <p className="status-text">Nothing uploaded yet.</p>
@@ -165,7 +165,7 @@ export default function Datasets() {
                             disabled={deleting === dataset.name}
                             onClick={() => handleDelete(dataset.name)}
                           >
-                            {deleting === dataset.name ? "…" : "confirm"}
+                            {deleting === dataset.name ? "..." : "confirm"}
                           </button>
                           <button
                             type="button"

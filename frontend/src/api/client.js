@@ -52,12 +52,12 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 90000, retries = 
       }
       if (error.name === "AbortError") {
         throw new Error(
-          "Request timed out. The API may be waking up on Render's free tier — wait 30 seconds and retry."
+          "Request timed out. The API may be waking up on Render free tier. Wait 30 seconds and retry."
         );
       }
       const target = API_BASE_URL || (typeof window !== "undefined" ? window.location.origin : "API");
       throw new Error(
-        `Failed to reach API at ${target}. The backend may be starting up — refresh in 30 seconds.`
+        `Failed to reach API at ${target}. The backend may be starting up. Refresh in 30 seconds.`
       );
     } finally {
       clearTimeout(timer);

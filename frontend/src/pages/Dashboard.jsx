@@ -40,12 +40,12 @@ export default function Dashboard({ onNavigate }) {
       </header>
 
       <section className="card">
-        {loading && <p className="status-text">Connecting…</p>}
+        {loading && <p className="status-text">Connecting...</p>}
 
         {error && (
           <div className="alert alert-error">
             <strong>Can&apos;t reach backend.</strong> {error}
-            <p className="hint">Render free tier sleeps after idle — wait ~30s, then retry.</p>
+            <p className="hint">Render free tier sleeps after idle. Wait ~30s, then retry.</p>
             <button type="button" className="btn btn-secondary btn-sm" onClick={load}>
               Retry
             </button>
@@ -60,7 +60,7 @@ export default function Dashboard({ onNavigate }) {
                 <span className="stat-value stat-value-lg">
                   {stats?.latest_pass_rate != null
                     ? `${(stats.latest_pass_rate * 100).toFixed(1)}%`
-                    : "—"}
+                    : "-"}
                 </span>
               </div>
               <div className="stat">
@@ -76,7 +76,7 @@ export default function Dashboard({ onNavigate }) {
                 <span className="stat-value">
                   {stats?.latest_average_score != null
                     ? stats.latest_average_score.toFixed(2)
-                    : "—"}
+                    : "-"}
                 </span>
               </div>
             </div>

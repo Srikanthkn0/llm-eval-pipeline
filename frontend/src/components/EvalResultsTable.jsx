@@ -1,6 +1,6 @@
 function clip(text) {
-  if (!text) return "—";
-  return text.length > 80 ? `${text.slice(0, 80)}…` : text;
+  if (!text) return "-";
+  return text.length > 80 ? `${text.slice(0, 80)}...` : text;
 }
 
 export default function EvalResultsTable({ results }) {
@@ -27,7 +27,7 @@ export default function EvalResultsTable({ results }) {
         <tbody>
           {results.map((row, index) => (
             <tr key={index} className={row.passed ? "" : "row-fail"}>
-              {hasCategory && <td className="col-narrow">{row.category || "—"}</td>}
+              {hasCategory && <td className="col-narrow">{row.category || "-"}</td>}
               <td className="cell-clip" title={row.input}>
                 {clip(row.input)}
               </td>

@@ -1,0 +1,6 @@
+input,expected_output,category
+What is 2 + 2?,4,math
+Capital of France?,Paris,geography
+What color is the sky on a clear day?,blue,science
+How many days are in a week?,7,math
+What does HTTP stand for?,Hypertext Transfer Protocol,tech

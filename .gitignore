@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+venv/
+.env
+
+# Node
+node_modules/
+dist/
+*.local
+
+# OS
+.DS_Store
+
+# Local SQLite + legacy file storage
+backend/app/data/*.db
+backend/app/data/datasets/*.csv
+backend/app/data/results/*.json
+backend/tests/tmp_data/

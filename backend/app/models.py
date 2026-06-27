@@ -52,7 +52,7 @@ class EvalRunRequest(BaseModel):
         default="Answer the question briefly.\n\nQuestion: {input}\nAnswer:",
         description="Use {input} as a placeholder for each test case input.",
     )
-    model_name: str = "llama-3.1-8b-instant"
+    model_name: str = "gemini-2.0-flash"
 
 
 class EvalJobResponse(BaseModel):

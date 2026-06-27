@@ -1,5 +1,5 @@
 # Render Blueprint — production settings (free tier)
-# Required for durable data: set DATABASE_URL to a free Neon Postgres URL in the dashboard.
+# Use GEMINI_API_KEY on Render (Groq blocks many cloud IPs via Cloudflare).
 
 services:
   - type: web
@@ -15,6 +15,8 @@ services:
       - key: FRONTEND_ORIGINS
         value: https://llm-eval-pipeline.vercel.app
       - key: DATABASE_URL
+        sync: false
+      - key: GEMINI_API_KEY
         sync: false
       - key: GROQ_API_KEY
         sync: false

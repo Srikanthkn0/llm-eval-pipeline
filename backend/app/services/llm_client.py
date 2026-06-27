@@ -1,18 +1,20 @@
 """
 LLM completion client with provider routing, retries, and production safeguards.
+
+Note: Groq blocks many cloud/datacenter IPs (Cloudflare 1010). Use Gemini or OpenAI
+on Render; Groq works better from residential/local networks.
 """
 import asyncio
-import json
 import time
-import urllib.error
-import urllib.request
 
+import httpx
 from fastapi import HTTPException
 
 from app.config import settings
 
-GROQ_BASE_URL = "https://api.groq.com/openai/v1/chat/completions"
 OPENAI_BASE_URL = "https://api.openai.com/v1/chat/completions"
+GROQ_BASE_URL = "https://api.groq.com/openai/v1/chat/completions"
+GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
 
 MODEL_REGISTRY = {
     "mock-model-v1": {
@@ -20,9 +22,15 @@ MODEL_REGISTRY = {
         "label": "Mock (CI/local only)",
         "requires_key": False,
     },
+    "gemini-2.0-flash": {
+        "provider": "gemini",
+        "label": "Gemini 2.0 Flash (recommended for Render)",
+        "requires_key": "GEMINI_API_KEY",
+        "remote_model": "gemini-2.0-flash",
+    },
     "llama-3.1-8b-instant": {
         "provider": "groq",
-        "label": "Llama 3.1 8B (Groq)",
+        "label": "Llama 3.1 8B (Groq — may fail on cloud hosts)",
         "requires_key": "GROQ_API_KEY",
     },
     "gpt-4o-mini": {
@@ -30,6 +38,12 @@ MODEL_REGISTRY = {
         "label": "GPT-4o mini (OpenAI)",
         "requires_key": "OPENAI_API_KEY",
     },
+}
+
+HTTP_HEADERS = {
+    "Content-Type": "application/json",
+    "User-Agent": "llm-eval-pipeline/1.0",
+    "Accept": "application/json",
 }
 
 
@@ -53,8 +67,7 @@ def list_available_models() -> list[dict[str, str | bool]]:
             continue
 
         key_name = str(meta["requires_key"])
-        available = bool(getattr(settings, key_name, ""))
-        if available:
+        if getattr(settings, key_name, ""):
             models.append(
                 {
                     "id": model_id,
@@ -78,7 +91,10 @@ def validate_model_choice(model_name: str) -> None:
         if settings.is_production and not settings.ALLOW_MOCK_MODEL:
             raise HTTPException(
                 status_code=400,
-                detail="mock-model-v1 is disabled in production. Configure GROQ_API_KEY or OPENAI_API_KEY.",
+                detail=(
+                    "mock-model-v1 is disabled in production. "
+                    "Configure GEMINI_API_KEY, OPENAI_API_KEY, or GROQ_API_KEY."
+                ),
             )
         return
 
@@ -106,46 +122,82 @@ async def _mock_generate(prompt: str) -> str:
     return "I don't know."
 
 
-def _chat_completion(url: str, api_key: str, model: str, prompt: str) -> str:
-    payload = json.dumps(
-        {
-            "model": model,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0,
-        }
-    ).encode("utf-8")
+def _format_llm_error(status_code: int, body: str, provider: str) -> RuntimeError:
+    if status_code == 403 and "1010" in body:
+        return RuntimeError(
+            f"{provider} blocked this server's IP (Cloudflare 1010). "
+            "Use gemini-2.0-flash with GEMINI_API_KEY on Render instead."
+        )
+    return RuntimeError(f"{provider} API error ({status_code}): {body[:500]}")
 
-    request = urllib.request.Request(
-        url,
-        data=payload,
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}",
-        },
-        method="POST",
-    )
+
+async def _openai_compatible_completion(
+    url: str,
+    api_key: str,
+    model: str,
+    prompt: str,
+    provider: str,
+) -> str:
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0,
+    }
+    headers = {**HTTP_HEADERS, "Authorization": f"Bearer {api_key}"}
 
     last_error: Exception | None = None
-    for attempt in range(settings.LLM_MAX_RETRIES + 1):
-        try:
-            with urllib.request.urlopen(request, timeout=settings.LLM_REQUEST_TIMEOUT_SEC) as response:
-                body = json.loads(response.read().decode("utf-8"))
-                return body["choices"][0]["message"]["content"].strip()
-        except urllib.error.HTTPError as exc:
-            error_body = exc.read().decode("utf-8", errors="replace")
-            last_error = RuntimeError(f"LLM API error ({exc.code}): {error_body}")
-            if exc.code in {429, 500, 502, 503, 504} and attempt < settings.LLM_MAX_RETRIES:
-                time.sleep(0.5 * (attempt + 1))
-                continue
-            raise last_error from exc
-        except urllib.error.URLError as exc:
-            last_error = RuntimeError(f"LLM request failed: {exc.reason}")
-            if attempt < settings.LLM_MAX_RETRIES:
-                time.sleep(0.5 * (attempt + 1))
-                continue
-            raise last_error from exc
+    async with httpx.AsyncClient(timeout=settings.LLM_REQUEST_TIMEOUT_SEC) as client:
+        for attempt in range(settings.LLM_MAX_RETRIES + 1):
+            try:
+                response = await client.post(url, headers=headers, json=payload)
+                if response.status_code >= 400:
+                    body = response.text
+                    if response.status_code in {429, 500, 502, 503, 504} and attempt < settings.LLM_MAX_RETRIES:
+                        await asyncio.sleep(0.5 * (attempt + 1))
+                        continue
+                    raise _format_llm_error(response.status_code, body, provider)
+                data = response.json()
+                return data["choices"][0]["message"]["content"].strip()
+            except httpx.HTTPError as exc:
+                last_error = RuntimeError(f"{provider} request failed: {exc}")
+                if attempt < settings.LLM_MAX_RETRIES:
+                    await asyncio.sleep(0.5 * (attempt + 1))
+                    continue
+                raise last_error from exc
 
-    raise last_error or RuntimeError("LLM request failed")
+    raise last_error or RuntimeError(f"{provider} request failed")
+
+
+async def _gemini_completion(model: str, prompt: str) -> str:
+    remote_model = MODEL_REGISTRY[model].get("remote_model", model)
+    url = f"{GEMINI_BASE_URL}/{remote_model}:generateContent"
+    params = {"key": settings.GEMINI_API_KEY}
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"temperature": 0},
+    }
+
+    last_error: Exception | None = None
+    async with httpx.AsyncClient(timeout=settings.LLM_REQUEST_TIMEOUT_SEC) as client:
+        for attempt in range(settings.LLM_MAX_RETRIES + 1):
+            try:
+                response = await client.post(url, params=params, headers=HTTP_HEADERS, json=payload)
+                if response.status_code >= 400:
+                    body = response.text
+                    if response.status_code in {429, 500, 502, 503, 504} and attempt < settings.LLM_MAX_RETRIES:
+                        await asyncio.sleep(0.5 * (attempt + 1))
+                        continue
+                    raise _format_llm_error(response.status_code, body, "Gemini")
+                data = response.json()
+                return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+            except httpx.HTTPError as exc:
+                last_error = RuntimeError(f"Gemini request failed: {exc}")
+                if attempt < settings.LLM_MAX_RETRIES:
+                    await asyncio.sleep(0.5 * (attempt + 1))
+                    continue
+                raise last_error from exc
+
+    raise last_error or RuntimeError("Gemini request failed")
 
 
 async def generate_completion(prompt: str, model_name: str) -> tuple[str, float]:
@@ -155,21 +207,23 @@ async def generate_completion(prompt: str, model_name: str) -> tuple[str, float]
 
     if meta["provider"] == "mock":
         text = await _mock_generate(prompt)
+    elif meta["provider"] == "gemini":
+        text = await _gemini_completion(model_name, prompt)
     elif meta["provider"] == "groq":
-        text = await asyncio.to_thread(
-            _chat_completion,
+        text = await _openai_compatible_completion(
             GROQ_BASE_URL,
             settings.GROQ_API_KEY,
             model_name,
             prompt,
+            "Groq",
         )
     else:
-        text = await asyncio.to_thread(
-            _chat_completion,
+        text = await _openai_compatible_completion(
             OPENAI_BASE_URL,
             settings.OPENAI_API_KEY,
             model_name,
             prompt,
+            "OpenAI",
         )
 
     latency_ms = (time.perf_counter() - start) * 1000
@@ -178,6 +232,7 @@ async def generate_completion(prompt: str, model_name: str) -> tuple[str, float]
 
 def provider_status() -> dict[str, bool]:
     return {
+        "gemini": bool(settings.GEMINI_API_KEY),
         "groq": bool(settings.GROQ_API_KEY),
         "openai": bool(settings.OPENAI_API_KEY),
         "mock_allowed": settings.ALLOW_MOCK_MODEL or not settings.is_production,

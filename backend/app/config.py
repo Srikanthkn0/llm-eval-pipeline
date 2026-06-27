@@ -28,6 +28,7 @@ class Settings:
     )
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     ALLOW_MOCK_MODEL: bool = os.getenv("ALLOW_MOCK_MODEL", "").lower() in {
         "1",
         "true",

@@ -89,8 +89,8 @@ export default function RunEval({ onRunComplete }) {
       <section className="card">
         <h2>Run evaluation</h2>
         <p className="card-description">
-          Evaluations run as background jobs with live progress. Use Groq or OpenAI
-          models in production; mock model is available only for local dev and CI.
+          Evaluations run as background jobs with live progress. Use Gemini on
+          Render (Groq is blocked on many cloud servers). Mock is for local dev/CI only.
         </p>
 
         {loading && <p className="status-text">Loading datasets and models...</p>}
@@ -101,8 +101,7 @@ export default function RunEval({ onRunComplete }) {
 
         {!loading && models.length === 0 && (
           <div className="alert alert-warn">
-            No models available. Configure <code>GROQ_API_KEY</code> or{" "}
-            <code>OPENAI_API_KEY</code> on the backend.
+            No models available. Configure <code>GEMINI_API_KEY</code> on the backend.
           </div>
         )}
 

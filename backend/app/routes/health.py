@@ -12,7 +12,12 @@ router = APIRouter()
 async def health_check():
     db_ok = check_db()
     providers = provider_status()
-    llm_ready = providers["groq"] or providers["openai"] or providers["mock_allowed"]
+    llm_ready = (
+        providers["gemini"]
+        or providers["groq"]
+        or providers["openai"]
+        or providers["mock_allowed"]
+    )
     status = "ok" if db_ok and llm_ready else "degraded"
 
     return HealthResponse(

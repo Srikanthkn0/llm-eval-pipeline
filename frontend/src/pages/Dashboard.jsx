@@ -80,6 +80,12 @@ export default function Dashboard() {
               <span className="value">{health.environment}</span>
             </div>
             <div className="metric">
+              <span className="label">Gemini</span>
+              <span className="value">
+                {health.llm_providers?.gemini ? "configured" : "not set"}
+              </span>
+            </div>
+            <div className="metric">
               <span className="label">Groq</span>
               <span className="value">
                 {health.llm_providers?.groq ? "configured" : "not set"}
@@ -124,9 +130,8 @@ export default function Dashboard() {
 
           {health.status === "degraded" && (
             <div className="alert alert-warn">
-              <strong>Degraded mode.</strong> Add <code>GROQ_API_KEY</code> or{" "}
-              <code>OPENAI_API_KEY</code> on the backend for real model inference in
-              production.
+              <strong>Degraded mode.</strong> Add <code>GEMINI_API_KEY</code> on the
+              backend (recommended on Render). Groq often fails on cloud hosts.
             </div>
           )}
         </>

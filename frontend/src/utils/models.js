@@ -1,6 +1,6 @@
 const MODEL_LABELS = {
-  "gemini-1.5-flash": "Gemini 1.5 Flash",
-  "gemini-2.0-flash": "Gemini 2.0 Flash",
+  "gemini-2.5-flash-lite": "Gemini 2.5 Flash-Lite",
+  "gemini-2.5-flash": "Gemini 2.5 Flash",
   "llama-3.1-8b-instant": "Llama 3.1 8B",
   "gpt-4o-mini": "GPT-4o mini",
   "mock-model-v1": "Mock (demo)",

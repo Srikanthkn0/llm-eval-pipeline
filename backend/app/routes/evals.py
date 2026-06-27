@@ -19,7 +19,7 @@ router = APIRouter()
 async def get_models():
     models = list_available_models()
     default_model = "mock-model-v1"
-    for candidate in ("gemini-1.5-flash", "gemini-2.0-flash", "gpt-4o-mini", "llama-3.1-8b-instant", "mock-model-v1"):
+    for candidate in ("gemini-2.5-flash-lite", "gemini-2.5-flash", "gpt-4o-mini", "llama-3.1-8b-instant", "mock-model-v1"):
         if any(model["id"] == candidate and model["available"] for model in models):
             default_model = candidate
             break

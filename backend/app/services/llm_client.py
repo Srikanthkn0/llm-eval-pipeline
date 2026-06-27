@@ -22,17 +22,17 @@ MODEL_REGISTRY = {
         "label": "Mock (CI/local only)",
         "requires_key": False,
     },
-    "gemini-1.5-flash": {
+    "gemini-2.5-flash-lite": {
         "provider": "gemini",
-        "label": "Gemini 1.5 Flash",
+        "label": "Gemini 2.5 Flash-Lite",
         "requires_key": "GEMINI_API_KEY",
-        "remote_model": "gemini-1.5-flash",
+        "remote_model": "gemini-2.5-flash-lite",
     },
-    "gemini-2.0-flash": {
+    "gemini-2.5-flash": {
         "provider": "gemini",
-        "label": "Gemini 2.0 Flash",
+        "label": "Gemini 2.5 Flash",
         "requires_key": "GEMINI_API_KEY",
-        "remote_model": "gemini-2.0-flash",
+        "remote_model": "gemini-2.5-flash",
     },
     "llama-3.1-8b-instant": {
         "provider": "groq",
@@ -137,7 +137,7 @@ def _format_llm_error(status_code: int, body: str, provider: str) -> RuntimeErro
     if status_code == 429:
         return RuntimeError(
             f"{provider} rate limit hit (429). Wait a minute and retry, "
-            "or try gemini-1.5-flash instead of gemini-2.0-flash."
+            "or try gemini-2.5-flash-lite instead of gemini-2.5-flash."
         )
     return RuntimeError(f"{provider} API error ({status_code}): {body[:500]}")
 

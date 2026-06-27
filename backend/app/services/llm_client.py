@@ -22,9 +22,15 @@ MODEL_REGISTRY = {
         "label": "Mock (CI/local only)",
         "requires_key": False,
     },
+    "gemini-1.5-flash": {
+        "provider": "gemini",
+        "label": "Gemini 1.5 Flash",
+        "requires_key": "GEMINI_API_KEY",
+        "remote_model": "gemini-1.5-flash",
+    },
     "gemini-2.0-flash": {
         "provider": "gemini",
-        "label": "Gemini 2.0 Flash (recommended for Render)",
+        "label": "Gemini 2.0 Flash",
         "requires_key": "GEMINI_API_KEY",
         "remote_model": "gemini-2.0-flash",
     },
@@ -126,7 +132,12 @@ def _format_llm_error(status_code: int, body: str, provider: str) -> RuntimeErro
     if status_code == 403 and "1010" in body:
         return RuntimeError(
             f"{provider} blocked this server's IP (Cloudflare 1010). "
-            "Use gemini-2.0-flash with GEMINI_API_KEY on Render instead."
+            "Use Gemini with GEMINI_API_KEY on Render instead."
+        )
+    if status_code == 429:
+        return RuntimeError(
+            f"{provider} rate limit hit (429). Wait a minute and retry, "
+            "or try gemini-1.5-flash instead of gemini-2.0-flash."
         )
     return RuntimeError(f"{provider} API error ({status_code}): {body[:500]}")
 

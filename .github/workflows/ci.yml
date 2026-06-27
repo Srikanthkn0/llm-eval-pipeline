@@ -32,6 +32,8 @@ jobs:
 
       - name: Run sample eval gate
         run: python scripts/run_ci_eval.py --min-pass-rate 0.8
+        env:
+          ALLOW_MOCK_MODEL: "true"
 
   frontend:
     runs-on: ubuntu-latest

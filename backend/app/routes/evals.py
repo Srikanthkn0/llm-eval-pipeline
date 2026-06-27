@@ -1,19 +1,47 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, BackgroundTasks
 
-from app.models import EvalRunListResponse, EvalRunRequest, EvalRunResponse
-from app.services.eval_runner import run_evaluation
-from app.services.result_storage import list_runs, load_run
+from app.models import (
+    EvalJobResponse,
+    EvalRunListResponse,
+    EvalRunRequest,
+    EvalRunResponse,
+    ModelListResponse,
+    StatsResponse,
+)
+from app.services.job_service import get_job, queue_job, run_job
+from app.services.llm_client import list_available_models
+from app.services.result_storage import get_stats, list_runs, load_run
 
 router = APIRouter()
 
 
-@router.post("/evals/run", response_model=EvalRunResponse)
-async def run_eval(payload: EvalRunRequest):
-    return await run_evaluation(
-        dataset_name=payload.dataset_name,
-        prompt_template=payload.prompt_template,
-        model_name=payload.model_name,
-    )
+@router.get("/models", response_model=ModelListResponse)
+async def get_models():
+    models = list_available_models()
+    default_model = "mock-model-v1"
+    for candidate in ("llama-3.1-8b-instant", "gpt-4o-mini", "mock-model-v1"):
+        if any(model["id"] == candidate and model["available"] for model in models):
+            default_model = candidate
+            break
+    return ModelListResponse(models=models, default_model=default_model)
+
+
+@router.get("/stats", response_model=StatsResponse)
+async def get_dashboard_stats():
+    stats = get_stats()
+    return StatsResponse(**stats)
+
+
+@router.post("/evals/run", response_model=EvalJobResponse)
+async def run_eval(payload: EvalRunRequest, background_tasks: BackgroundTasks):
+    job = queue_job(payload)
+    background_tasks.add_task(run_job, job.job_id, payload)
+    return job
+
+
+@router.get("/evals/jobs/{job_id}", response_model=EvalJobResponse)
+async def get_eval_job(job_id: str):
+    return get_job(job_id)
 
 
 @router.get("/evals/runs", response_model=EvalRunListResponse)

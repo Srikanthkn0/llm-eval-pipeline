@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from fastapi import HTTPException
 
-from app.database import get_connection
+from app.database import execute, fetchall, fetchone, get_connection, ph
 from app.models import DatasetInfo
 
 REQUIRED_COLUMNS = {"input", "expected_output"}
@@ -57,54 +57,50 @@ def _parse_csv(content: str) -> list[dict[str, str]]:
 def save_dataset(name: str, content: str, *, replace: bool = False) -> DatasetInfo:
     dataset_name = _sanitize_name(name)
     rows = _parse_csv(content)
+    created_at = datetime.now(timezone.utc).isoformat()
 
     with get_connection() as conn:
-        existing = conn.execute(
-            "SELECT name FROM datasets WHERE name = ?",
-            (dataset_name,),
-        ).fetchone()
+        existing = fetchone(conn, f"SELECT name FROM datasets WHERE name = {ph()}", (dataset_name,))
         if existing and not replace:
             raise HTTPException(
                 status_code=409,
                 detail=f"Dataset '{dataset_name}' already exists. Choose a different name.",
             )
 
-        created_at = datetime.now(timezone.utc).isoformat()
         if existing:
-            conn.execute(
-                """
+            execute(
+                conn,
+                f"""
                 UPDATE datasets
-                SET content = ?, row_count = ?, created_at = ?
-                WHERE name = ?
+                SET content = {ph()}, row_count = {ph()}, created_at = {ph()}
+                WHERE name = {ph()}
                 """,
                 (content, len(rows), created_at, dataset_name),
             )
         else:
-            conn.execute(
-                """
+            execute(
+                conn,
+                f"""
                 INSERT INTO datasets (name, content, row_count, created_at)
-                VALUES (?, ?, ?, ?)
+                VALUES ({ph()}, {ph()}, {ph()}, {ph()})
                 """,
                 (dataset_name, content, len(rows), created_at),
             )
-        conn.commit()
 
     return DatasetInfo(name=dataset_name, file_name=f"{dataset_name}.csv", row_count=len(rows))
 
 
-def delete_dataset(name: str) -> bool:
+def delete_dataset(name: str) -> None:
     with get_connection() as conn:
-        cursor = conn.execute("DELETE FROM datasets WHERE name = ?", (name,))
-        conn.commit()
-        return cursor.rowcount > 0
+        row = fetchone(conn, f"SELECT name FROM datasets WHERE name = {ph()}", (name,))
+        if row is None:
+            raise HTTPException(status_code=404, detail=f"Dataset '{name}' not found.")
+        execute(conn, f"DELETE FROM datasets WHERE name = {ph()}", (name,))
 
 
 def list_datasets() -> list[DatasetInfo]:
     with get_connection() as conn:
-        rows = conn.execute(
-            "SELECT name, row_count FROM datasets ORDER BY name"
-        ).fetchall()
-
+        rows = fetchall(conn, "SELECT name, row_count FROM datasets ORDER BY name")
     return [
         DatasetInfo(name=row["name"], file_name=f"{row['name']}.csv", row_count=row["row_count"])
         for row in rows
@@ -113,12 +109,7 @@ def list_datasets() -> list[DatasetInfo]:
 
 def load_dataset(name: str) -> list[dict[str, str]]:
     with get_connection() as conn:
-        row = conn.execute(
-            "SELECT content FROM datasets WHERE name = ?",
-            (name,),
-        ).fetchone()
-
+        row = fetchone(conn, f"SELECT content FROM datasets WHERE name = {ph()}", (name,))
     if row is None:
         raise HTTPException(status_code=404, detail=f"Dataset '{name}' not found.")
-
     return _parse_csv(row["content"])

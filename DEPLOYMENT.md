@@ -1,125 +1,79 @@
-# Deployment Guide
+# Production Deployment Guide
 
-Deploy the backend to **Render** and the frontend to **Vercel**. Total time: ~20 minutes.
+Total cost: **₹0** with free tiers (Vercel + Render + Neon + Groq).
 
-## Prerequisites
+## Architecture
 
-- GitHub account with this repo pushed to `main`
-- [Render](https://render.com) account (free tier works; persistent disk required for data)
-- [Vercel](https://vercel.com) account
-
----
-
-## 1. Push to GitHub
-
-```bash
-cd llm-eval-pipeline
-git init
-git add .
-git commit -m "LLM eval pipeline: full-stack app with CI"
-git branch -M main
-git remote add origin https://github.com/Srikanthkn0/llm-eval-pipeline.git
-git push -u origin main
-```
-
-Confirm GitHub Actions passes on the first push.
+| Component | Service | Purpose |
+|-----------|---------|---------|
+| Frontend | Vercel | React dashboard |
+| Backend API | Render (free) | FastAPI + gunicorn |
+| Database | Neon (free Postgres) | Durable datasets + eval history |
+| LLM inference | Groq (free API key) | Real model responses in production |
 
 ---
 
-## 2. Deploy backend (Render)
+## 1. Database — Neon Postgres (required for production)
 
-### Option A: Blueprint (recommended)
+SQLite on Render free tier loses data on redeploy. Use Neon instead.
 
-1. Render Dashboard → **New** → **Blueprint**
-2. Connect your GitHub repo
-3. Render reads `render.yaml` at the **repo root** automatically
-4. Set these env vars when prompted:
-   - `FRONTEND_ORIGINS` → your Vercel URL (set after step 3, then update)
-   - `OPENAI_API_KEY` → optional, for real OpenAI evals
+1. Sign up at [neon.tech](https://neon.tech)
+2. Create a project → copy the **connection string**
+3. It looks like: `postgresql://user:pass@ep-xxx.region.aws.neon.tech/neondb?sslmode=require`
 
-### Option B: Manual web service
+---
 
-1. **New Web Service** → connect repo
-2. Root directory: `backend`
-3. Build command: `pip install -r requirements.txt`
-4. Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-5. Add a **persistent disk** (1 GB) mounted at `/var/data`
-6. Environment variables:
+## 2. LLM — Groq API key (required for production)
+
+1. Sign up at [console.groq.com](https://console.groq.com)
+2. Create an API key (free tier)
+3. Default production model: `llama-3.1-8b-instant`
+
+Mock model is disabled in production unless you explicitly set `ALLOW_MOCK_MODEL=true`.
+
+---
+
+## 3. Backend — Render
+
+1. [dashboard.render.com/blueprint/new](https://dashboard.render.com/blueprint/new?repo=https://github.com/Srikanthkn0/llm-eval-pipeline)
+2. Connect GitHub repo → **Apply**
+3. Set environment variables in Render dashboard:
 
 | Key | Value |
 |-----|-------|
-| `APP_ENV` | `production` |
-| `DATA_DIR` | `/var/data` |
-| `FRONTEND_ORIGINS` | `https://your-app.vercel.app` |
-| `OPENAI_API_KEY` | _(optional)_ |
+| `DATABASE_URL` | Your Neon connection string |
+| `GROQ_API_KEY` | Your Groq API key |
+| `FRONTEND_ORIGINS` | `https://llm-eval-pipeline.vercel.app` |
+| `OPENAI_API_KEY` | _(optional, for gpt-4o-mini)_ |
 
-7. Deploy and note your API URL: `https://llm-eval-pipeline-api.onrender.com`
-
-### Verify backend
-
+4. Wait for deploy → verify:
 ```bash
-curl https://YOUR-RENDER-URL.onrender.com/health
-curl https://YOUR-RENDER-URL.onrender.com/api/datasets
+curl https://llm-eval-pipeline-api.onrender.com/health
 ```
 
-You should see the seeded `sample` dataset.
+Expected: `"status":"ok"`, `"database":"connected"`, `"groq":true`
 
 ---
 
-## 3. Deploy frontend (Vercel)
+## 4. Frontend — Vercel
 
-1. Vercel Dashboard → **Add New Project** → import repo
-2. Root directory: `frontend`
-3. Framework preset: **Vite**
-4. Environment variable:
+1. Import repo at [vercel.com](https://vercel.com), root: `frontend`
+2. Environment variable:
 
 | Key | Value |
 |-----|-------|
-| `VITE_API_BASE_URL` | `https://YOUR-RENDER-URL.onrender.com` |
+| `VITE_API_BASE_URL` | `https://llm-eval-pipeline-api.onrender.com` |
 
-5. Deploy
-
-`frontend/vercel.json` handles SPA routing.
-
-### Verify frontend
-
-1. Open your Vercel URL
-2. Dashboard should show API status **ok**
-3. Go to **Run eval** → run against `sample` with `mock-model-v1`
-4. Check **Results** tab for the saved run
+3. Deploy → open https://llm-eval-pipeline.vercel.app
 
 ---
 
-## 4. Fix CORS (if needed)
+## 5. Smoke test
 
-If the frontend shows CORS errors:
-
-1. Render → your service → **Environment**
-2. Set `FRONTEND_ORIGINS` to your exact Vercel URL (no trailing slash)
-3. For preview deployments, use comma-separated origins:
-   ```
-   https://your-app.vercel.app,https://your-app-git-main.vercel.app
-   ```
-4. Redeploy the backend
-
----
-
-## Environment variables reference
-
-### Backend (`backend/.env` locally, Render in production)
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `FRONTEND_ORIGINS` | Yes | Comma-separated allowed CORS origins |
-| `DATA_DIR` | Production | `/var/data` on Render (persistent disk) |
-| `OPENAI_API_KEY` | No | Enables real OpenAI models |
-| `APP_ENV` | No | `development` or `production` |
-
-### Frontend (`frontend/.env` locally, Vercel env vars)
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `VITE_API_BASE_URL` | Yes | Render API URL (set before build) |
+1. Dashboard shows **ok** status, Groq **configured**
+2. Datasets tab shows seeded `sample` dataset
+3. Run eval with **Llama 3.1 8B (Groq)** — progress bar advances
+4. Results tab shows completed run with pass rate
 
 ---
 
@@ -127,20 +81,8 @@ If the frontend shows CORS errors:
 
 | Symptom | Fix |
 |---------|-----|
-| Dashboard says "API unreachable" | Check `VITE_API_BASE_URL` on Vercel; rebuild after changing |
-| CORS error in browser console | Update `FRONTEND_ORIGINS` on Render to match Vercel URL exactly |
-| Datasets disappear after redeploy | Ensure persistent disk is mounted at `/var/data` and `DATA_DIR=/var/data` |
-| Render cold start is slow | Free tier spins down after inactivity; first request takes ~30s |
-| CI fails on pass rate | Sample eval uses `mock-model-v1` + bundled CSV; should pass at 100% |
-| OpenAI model fails | Set `OPENAI_API_KEY` on Render and redeploy |
-
----
-
-## Post-deploy checklist
-
-- [ ] `curl https://API_URL/health` returns `{"status":"ok"}`
-- [ ] Vercel dashboard shows green API status
-- [ ] Run eval on `sample` dataset succeeds
-- [ ] Results appear in Results tab after refresh
-- [ ] GitHub Actions CI is green on `main`
-- [ ] Add live Vercel URL to README and resume
+| `status: degraded` on health | Add `GROQ_API_KEY` on Render |
+| `database: unavailable` | Set valid `DATABASE_URL` from Neon |
+| CORS errors | Match `FRONTEND_ORIGINS` to exact Vercel URL |
+| Eval job fails instantly | Check Render logs; verify API key and dataset name |
+| Cold start slow (~30s) | Render free tier spins down after inactivity |

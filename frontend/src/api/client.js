@@ -14,6 +14,16 @@ export async function fetchHealth() {
   return parseResponse(response);
 }
 
+export async function fetchStats() {
+  const response = await fetch(`${API_BASE_URL}/api/stats`);
+  return parseResponse(response);
+}
+
+export async function fetchModels() {
+  const response = await fetch(`${API_BASE_URL}/api/models`);
+  return parseResponse(response);
+}
+
 export async function fetchDatasets() {
   const response = await fetch(`${API_BASE_URL}/api/datasets`);
   return parseResponse(response);
@@ -33,13 +43,41 @@ export async function uploadDataset(file, name) {
   return parseResponse(response);
 }
 
-export async function runEval(payload) {
+export async function deleteDataset(name) {
+  const response = await fetch(`${API_BASE_URL}/api/datasets/${encodeURIComponent(name)}`, {
+    method: "DELETE",
+  });
+  return parseResponse(response);
+}
+
+export async function startEvalJob(payload) {
   const response = await fetch(`${API_BASE_URL}/api/evals/run`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   return parseResponse(response);
+}
+
+export async function fetchEvalJob(jobId) {
+  const response = await fetch(`${API_BASE_URL}/api/evals/jobs/${jobId}`);
+  return parseResponse(response);
+}
+
+export async function waitForEvalJob(jobId, { onProgress, intervalMs = 800 } = {}) {
+  while (true) {
+    const job = await fetchEvalJob(jobId);
+    onProgress?.(job);
+
+    if (job.status === "completed") {
+      return job;
+    }
+    if (job.status === "failed") {
+      throw new Error(job.error || "Evaluation job failed.");
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
 }
 
 export async function fetchEvalRuns() {

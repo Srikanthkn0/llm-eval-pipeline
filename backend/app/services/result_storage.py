@@ -1,17 +1,23 @@
 from fastapi import HTTPException
 
-from app.database import get_connection
+from app.config import settings
+from app.database import execute, fetchall, fetchone, get_connection, ph
 from app.models import EvalCaseResult, EvalRunResponse, EvalRunSummary
+
+
+def _bool_value(passed: bool) -> bool | int:
+    return passed if settings.use_postgres else int(passed)
 
 
 def save_run(run: EvalRunResponse) -> None:
     with get_connection() as conn:
-        conn.execute(
-            """
+        execute(
+            conn,
+            f"""
             INSERT INTO eval_runs (
                 run_id, dataset_name, prompt_template, model_name, created_at,
                 total_cases, passed_cases, pass_rate, average_score, average_latency_ms
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES ({ph()}, {ph()}, {ph()}, {ph()}, {ph()}, {ph()}, {ph()}, {ph()}, {ph()}, {ph()})
             """,
             (
                 run.run_id,
@@ -26,14 +32,15 @@ def save_run(run: EvalRunResponse) -> None:
                 run.average_latency_ms,
             ),
         )
-        conn.executemany(
-            """
-            INSERT INTO eval_case_results (
-                run_id, case_index, input, expected, actual,
-                score, passed, latency_ms, category
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            [
+        for index, case in enumerate(run.results):
+            execute(
+                conn,
+                f"""
+                INSERT INTO eval_case_results (
+                    run_id, case_index, input, expected, actual,
+                    score, passed, latency_ms, category
+                ) VALUES ({ph()}, {ph()}, {ph()}, {ph()}, {ph()}, {ph()}, {ph()}, {ph()}, {ph()})
+                """,
                 (
                     run.run_id,
                     index,
@@ -41,28 +48,25 @@ def save_run(run: EvalRunResponse) -> None:
                     case.expected,
                     case.actual,
                     case.score,
-                    int(case.passed),
+                    _bool_value(case.passed),
                     case.latency_ms,
                     case.category,
-                )
-                for index, case in enumerate(run.results)
-            ],
-        )
-        conn.commit()
+                ),
+            )
 
 
 def list_runs() -> list[EvalRunSummary]:
     with get_connection() as conn:
-        rows = conn.execute(
+        rows = fetchall(
+            conn,
             """
             SELECT run_id, dataset_name, model_name, created_at,
                    total_cases, passed_cases, pass_rate,
                    average_score, average_latency_ms
             FROM eval_runs
             ORDER BY created_at DESC
-            """
-        ).fetchall()
-
+            """,
+        )
     return [
         EvalRunSummary(
             run_id=row["run_id"],
@@ -81,22 +85,19 @@ def list_runs() -> list[EvalRunSummary]:
 
 def load_run(run_id: str) -> EvalRunResponse:
     with get_connection() as conn:
-        run_row = conn.execute(
-            "SELECT * FROM eval_runs WHERE run_id = ?",
-            (run_id,),
-        ).fetchone()
+        run_row = fetchone(conn, f"SELECT * FROM eval_runs WHERE run_id = {ph()}", (run_id,))
         if run_row is None:
             raise HTTPException(status_code=404, detail=f"Eval run '{run_id}' not found.")
-
-        case_rows = conn.execute(
-            """
+        case_rows = fetchall(
+            conn,
+            f"""
             SELECT input, expected, actual, score, passed, latency_ms, category
             FROM eval_case_results
-            WHERE run_id = ?
+            WHERE run_id = {ph()}
             ORDER BY case_index
             """,
             (run_id,),
-        ).fetchall()
+        )
 
     return EvalRunResponse(
         run_id=run_row["run_id"],
@@ -122,3 +123,25 @@ def load_run(run_id: str) -> EvalRunResponse:
             for row in case_rows
         ],
     )
+
+
+def get_stats() -> dict[str, float | int]:
+    with get_connection() as conn:
+        dataset_count = fetchone(conn, "SELECT COUNT(*) AS count FROM datasets")
+        run_count = fetchone(conn, "SELECT COUNT(*) AS count FROM eval_runs")
+        latest = fetchone(
+            conn,
+            """
+            SELECT pass_rate, average_score, created_at
+            FROM eval_runs
+            ORDER BY created_at DESC
+            LIMIT 1
+            """,
+        )
+    return {
+        "dataset_count": dataset_count["count"] if dataset_count else 0,
+        "run_count": run_count["count"] if run_count else 0,
+        "latest_pass_rate": latest["pass_rate"] if latest else None,
+        "latest_average_score": latest["average_score"] if latest else None,
+        "latest_run_at": latest["created_at"] if latest else None,
+    }

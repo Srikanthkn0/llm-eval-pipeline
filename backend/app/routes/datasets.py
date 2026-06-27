@@ -38,3 +38,9 @@ async def upload_dataset(
         message=f"Dataset '{dataset.name}' uploaded with {dataset.row_count} rows.",
         dataset=dataset,
     )
+
+
+@router.delete("/datasets/{name}")
+async def delete_dataset(name: str):
+    dataset_service.delete_dataset(name)
+    return {"message": f"Dataset '{name}' deleted."}

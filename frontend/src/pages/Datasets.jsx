@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchDatasets, uploadDataset } from "../api/client.js";
+import { deleteDataset, fetchDatasets, uploadDataset } from "../api/client.js";
 
 export default function Datasets() {
   const [datasets, setDatasets] = useState([]);
@@ -7,6 +7,7 @@ export default function Datasets() {
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [deleting, setDeleting] = useState(null);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
@@ -52,6 +53,26 @@ export default function Datasets() {
     }
   }
 
+  async function handleDelete(datasetName) {
+    if (!window.confirm(`Delete dataset "${datasetName}"? This cannot be undone.`)) {
+      return;
+    }
+
+    setDeleting(datasetName);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const result = await deleteDataset(datasetName);
+      setSuccess(result.message);
+      await loadDatasets();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDeleting(null);
+    }
+  }
+
   return (
     <div className="stack">
       <section className="card">
@@ -88,14 +109,10 @@ export default function Datasets() {
 
         {error && (
           <div className="alert alert-error">
-            <strong>Upload failed.</strong> {error}
+            <strong>Error.</strong> {error}
           </div>
         )}
-        {success && (
-          <div className="alert alert-success">
-            {success}
-          </div>
-        )}
+        {success && <div className="alert alert-success">{success}</div>}
       </section>
 
       <section className="card">
@@ -103,10 +120,7 @@ export default function Datasets() {
         {loading && <p className="status-text">Loading...</p>}
 
         {!loading && datasets.length === 0 && (
-          <p className="status-text">
-            No datasets yet. Upload{" "}
-            <code>backend/sample_data/sample_eval.csv</code> to get started.
-          </p>
+          <p className="status-text">No datasets yet. Upload a CSV to get started.</p>
         )}
 
         {datasets.length > 0 && (
@@ -116,6 +130,7 @@ export default function Datasets() {
                 <th>Name</th>
                 <th>File</th>
                 <th>Rows</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -124,6 +139,16 @@ export default function Datasets() {
                   <td>{dataset.name}</td>
                   <td>{dataset.file_name}</td>
                   <td>{dataset.row_count}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="btn btn-link btn-danger"
+                      disabled={deleting === dataset.name}
+                      onClick={() => handleDelete(dataset.name)}
+                    >
+                      {deleting === dataset.name ? "Deleting..." : "Delete"}
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>

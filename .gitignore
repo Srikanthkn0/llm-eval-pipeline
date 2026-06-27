@@ -20,3 +20,5 @@ backend/app/data/*.db
 backend/app/data/datasets/*.csv
 backend/app/data/results/*.json
 backend/tests/tmp_data/
+.vercel
+.env*

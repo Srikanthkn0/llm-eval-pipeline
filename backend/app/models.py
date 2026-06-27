@@ -1,11 +1,14 @@
-from pydantic import BaseModel, Field
 from typing import List, Optional
+
+from pydantic import BaseModel, Field
 
 
 class HealthResponse(BaseModel):
     status: str
     app_name: str
     environment: str
+    database: str
+    llm_providers: dict[str, bool]
 
 
 class DatasetInfo(BaseModel):
@@ -23,13 +26,46 @@ class DatasetUploadResponse(BaseModel):
     dataset: DatasetInfo
 
 
+class ModelInfo(BaseModel):
+    id: str
+    label: str
+    provider: str
+    available: bool
+
+
+class ModelListResponse(BaseModel):
+    models: List[ModelInfo]
+    default_model: str
+
+
+class StatsResponse(BaseModel):
+    dataset_count: int
+    run_count: int
+    latest_pass_rate: Optional[float] = None
+    latest_average_score: Optional[float] = None
+    latest_run_at: Optional[str] = None
+
+
 class EvalRunRequest(BaseModel):
     dataset_name: str
     prompt_template: str = Field(
         default="Answer the question briefly.\n\nQuestion: {input}\nAnswer:",
         description="Use {input} as a placeholder for each test case input.",
     )
-    model_name: str = "mock-model-v1"
+    model_name: str = "llama-3.1-8b-instant"
+
+
+class EvalJobResponse(BaseModel):
+    job_id: str
+    status: str
+    dataset_name: str
+    model_name: str
+    progress: int
+    total: int
+    run_id: Optional[str] = None
+    error: Optional[str] = None
+    created_at: str
+    updated_at: str
 
 
 class EvalCaseResult(BaseModel):

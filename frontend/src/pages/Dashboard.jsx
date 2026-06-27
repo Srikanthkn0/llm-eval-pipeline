@@ -1,27 +1,30 @@
 import { useEffect, useState } from "react";
-import { fetchHealth } from "../api/client.js";
+import { fetchHealth, fetchStats } from "../api/client.js";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 export default function Dashboard() {
   const [health, setHealth] = useState(null);
+  const [stats, setStats] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadHealth() {
+    async function load() {
       try {
-        const data = await fetchHealth();
+        const [healthData, statsData] = await Promise.all([fetchHealth(), fetchStats()]);
         if (!cancelled) {
-          setHealth(data);
+          setHealth(healthData);
+          setStats(statsData);
           setError(null);
         }
       } catch (err) {
         if (!cancelled) {
           setError(err.message);
           setHealth(null);
+          setStats(null);
         }
       } finally {
         if (!cancelled) {
@@ -30,7 +33,7 @@ export default function Dashboard() {
       }
     }
 
-    loadHealth();
+    load();
     return () => {
       cancelled = true;
     };
@@ -40,45 +43,93 @@ export default function Dashboard() {
     <section className="card">
       <h2>Dashboard</h2>
       <p className="card-description">
-        Upload CSV test cases, run them through a prompt template, and review
-        pass rate, per-case scores, and latency. CI runs the same eval flow on
-        every push.
+        Production eval workspace. Upload datasets, run prompt evaluations against
+        real models, and track pass rate over time.
       </p>
 
       <div className="status-grid">
         <div className="status-item">
-          <span className="label">API base URL</span>
+          <span className="label">API</span>
           <span className="value mono">{API_BASE_URL}</span>
         </div>
       </div>
 
-      {loading && <p className="status-text">Checking API...</p>}
+      {loading && <p className="status-text">Loading system status...</p>}
 
       {error && (
         <div className="alert alert-error">
           <strong>API unreachable.</strong> {error}
-          <p className="hint">
-            Start the backend with <code>uvicorn app.main:app --reload --port 8000</code>{" "}
-            or set <code>VITE_API_BASE_URL</code> to your deployed API.
-          </p>
         </div>
       )}
 
       {health && (
-        <div className="status-grid">
-          <div className="status-item">
-            <span className="label">Status</span>
-            <span className="value badge badge-ok">{health.status}</span>
+        <>
+          <div className="metrics-grid">
+            <div className="metric">
+              <span className="label">System</span>
+              <span className={`value badge ${health.status === "ok" ? "badge-ok" : "badge-warn"}`}>
+                {health.status}
+              </span>
+            </div>
+            <div className="metric">
+              <span className="label">Database</span>
+              <span className="value">{health.database}</span>
+            </div>
+            <div className="metric">
+              <span className="label">Environment</span>
+              <span className="value">{health.environment}</span>
+            </div>
+            <div className="metric">
+              <span className="label">Groq</span>
+              <span className="value">
+                {health.llm_providers?.groq ? "configured" : "not set"}
+              </span>
+            </div>
+            <div className="metric">
+              <span className="label">OpenAI</span>
+              <span className="value">
+                {health.llm_providers?.openai ? "configured" : "not set"}
+              </span>
+            </div>
           </div>
-          <div className="status-item">
-            <span className="label">App</span>
-            <span className="value">{health.app_name}</span>
-          </div>
-          <div className="status-item">
-            <span className="label">Environment</span>
-            <span className="value">{health.environment}</span>
-          </div>
-        </div>
+
+          {stats && (
+            <div className="metrics-grid">
+              <div className="metric">
+                <span className="label">Datasets</span>
+                <span className="value">{stats.dataset_count}</span>
+              </div>
+              <div className="metric">
+                <span className="label">Total runs</span>
+                <span className="value">{stats.run_count}</span>
+              </div>
+              <div className="metric">
+                <span className="label">Latest pass rate</span>
+                <span className="value">
+                  {stats.latest_pass_rate != null
+                    ? `${(stats.latest_pass_rate * 100).toFixed(1)}%`
+                    : "—"}
+                </span>
+              </div>
+              <div className="metric">
+                <span className="label">Latest avg score</span>
+                <span className="value">
+                  {stats.latest_average_score != null
+                    ? stats.latest_average_score.toFixed(2)
+                    : "—"}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {health.status === "degraded" && (
+            <div className="alert alert-warn">
+              <strong>Degraded mode.</strong> Add <code>GROQ_API_KEY</code> or{" "}
+              <code>OPENAI_API_KEY</code> on the backend for real model inference in
+              production.
+            </div>
+          )}
+        </>
       )}
     </section>
   );

@@ -1,26 +1,39 @@
 import { useEffect, useState } from "react";
-import { fetchDatasets, runEval } from "../api/client.js";
+import {
+  fetchDatasets,
+  fetchEvalRun,
+  fetchModels,
+  startEvalJob,
+  waitForEvalJob,
+} from "../api/client.js";
 
 const DEFAULT_PROMPT =
   "Answer the question briefly.\n\nQuestion: {input}\nAnswer:";
 
 export default function RunEval({ onRunComplete }) {
   const [datasets, setDatasets] = useState([]);
+  const [models, setModels] = useState([]);
   const [datasetName, setDatasetName] = useState("");
   const [promptTemplate, setPromptTemplate] = useState(DEFAULT_PROMPT);
-  const [modelName, setModelName] = useState("mock-model-v1");
+  const [modelName, setModelName] = useState("");
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
+  const [job, setJob] = useState(null);
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
 
   useEffect(() => {
     async function load() {
       try {
-        const data = await fetchDatasets();
-        setDatasets(data.datasets);
-        if (data.datasets.length > 0) {
-          setDatasetName(data.datasets[0].name);
+        const [datasetData, modelData] = await Promise.all([
+          fetchDatasets(),
+          fetchModels(),
+        ]);
+        setDatasets(datasetData.datasets);
+        setModels(modelData.models);
+        setModelName(modelData.default_model);
+        if (datasetData.datasets.length > 0) {
+          setDatasetName(datasetData.datasets[0].name);
         }
       } catch (err) {
         setError(err.message);
@@ -37,19 +50,30 @@ export default function RunEval({ onRunComplete }) {
       setError("Select a dataset first.");
       return;
     }
+    if (!modelName) {
+      setError("Select a model first.");
+      return;
+    }
 
     setRunning(true);
     setError(null);
     setResult(null);
+    setJob(null);
 
     try {
-      const data = await runEval({
+      const started = await startEvalJob({
         dataset_name: datasetName,
         prompt_template: promptTemplate,
         model_name: modelName,
       });
-      setResult(data);
-      onRunComplete?.(data.run_id);
+      setJob(started);
+
+      const finished = await waitForEvalJob(started.job_id, {
+        onProgress: setJob,
+      });
+      const run = await fetchEvalRun(finished.run_id);
+      setResult(run);
+      onRunComplete?.(run.run_id);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -57,26 +81,32 @@ export default function RunEval({ onRunComplete }) {
     }
   }
 
+  const progressPct =
+    job && job.total > 0 ? Math.round((job.progress / job.total) * 100) : 0;
+
   return (
     <div className="stack">
       <section className="card">
         <h2>Run evaluation</h2>
         <p className="card-description">
-          Runs every row in the dataset through the prompt template and scores
-          the model output against <code>expected_output</code>.{" "}
-          <code>mock-model-v1</code> is a deterministic demo model (no API key)
-          used for local dev and CI. Choose <code>gpt-4o-mini</code> for real
-          OpenAI inference when <code>OPENAI_API_KEY</code> is configured on
-          the backend.
+          Evaluations run as background jobs with live progress. Use Groq or OpenAI
+          models in production; mock model is available only for local dev and CI.
         </p>
 
-        {loading && <p className="status-text">Loading datasets...</p>}
+        {loading && <p className="status-text">Loading datasets and models...</p>}
 
         {!loading && datasets.length === 0 && (
           <p className="status-text">Upload a dataset before running an eval.</p>
         )}
 
-        {datasets.length > 0 && (
+        {!loading && models.length === 0 && (
+          <div className="alert alert-warn">
+            No models available. Configure <code>GROQ_API_KEY</code> or{" "}
+            <code>OPENAI_API_KEY</code> on the backend.
+          </div>
+        )}
+
+        {datasets.length > 0 && models.length > 0 && (
           <form className="form" onSubmit={handleSubmit}>
             <label className="field">
               <span>Dataset</span>
@@ -108,19 +138,32 @@ export default function RunEval({ onRunComplete }) {
                 value={modelName}
                 onChange={(event) => setModelName(event.target.value)}
               >
-                <option value="mock-model-v1">
-                  mock-model-v1 (demo model, no API key)
-                </option>
-                <option value="gpt-4o-mini">
-                  gpt-4o-mini (OpenAI, needs OPENAI_API_KEY on backend)
-                </option>
+                {models.map((model) => (
+                  <option key={model.id} value={model.id}>
+                    {model.label} ({model.provider})
+                  </option>
+                ))}
               </select>
             </label>
 
             <button type="submit" className="btn btn-primary" disabled={running}>
-              {running ? "Running..." : "Run eval"}
+              {running ? "Running evaluation..." : "Run eval"}
             </button>
           </form>
+        )}
+
+        {running && job && (
+          <div className="progress-block">
+            <div className="progress-meta">
+              <span>Status: {job.status}</span>
+              <span>
+                {job.progress} / {job.total || "—"} cases
+              </span>
+            </div>
+            <div className="progress-track">
+              <div className="progress-fill" style={{ width: `${progressPct}%` }} />
+            </div>
+          </div>
         )}
 
         {error && (

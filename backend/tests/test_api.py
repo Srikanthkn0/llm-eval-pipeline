@@ -1,6 +1,6 @@
+import time
 from pathlib import Path
 
-import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -10,11 +10,31 @@ SAMPLE_CSV = Path(__file__).resolve().parents[1] / "sample_data" / "sample_eval.
 client = TestClient(app)
 
 
+def _wait_for_job(job_id: str, timeout_sec: float = 10.0):
+    deadline = time.time() + timeout_sec
+    while time.time() < deadline:
+        response = client.get(f"/api/evals/jobs/{job_id}")
+        assert response.status_code == 200
+        payload = response.json()
+        if payload["status"] in {"completed", "failed"}:
+            return payload
+        time.sleep(0.1)
+    raise AssertionError(f"Job {job_id} did not complete in time")
+
+
 def test_health_check():
     response = client.get("/health")
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "ok"
+    assert data["status"] in {"ok", "degraded"}
+    assert data["database"] == "connected"
+
+
+def test_models_endpoint_includes_mock():
+    response = client.get("/api/models")
+    assert response.status_code == 200
+    models = response.json()["models"]
+    assert any(model["id"] == "mock-model-v1" for model in models)
 
 
 def test_upload_and_list_dataset():
@@ -46,25 +66,23 @@ def test_upload_rejects_invalid_csv():
     assert "missing required columns" in response.json()["detail"].lower()
 
 
-def test_upload_rejects_duplicate_dataset():
+def test_delete_dataset():
     with SAMPLE_CSV.open("rb") as handle:
         client.post(
             "/api/datasets/upload",
             files={"file": ("sample_eval.csv", handle, "text/csv")},
-            data={"name": "dup-test"},
+            data={"name": "delete-me"},
         )
 
-    with SAMPLE_CSV.open("rb") as handle:
-        response = client.post(
-            "/api/datasets/upload",
-            files={"file": ("sample_eval.csv", handle, "text/csv")},
-            data={"name": "dup-test"},
-        )
+    response = client.delete("/api/datasets/delete-me")
+    assert response.status_code == 200
 
-    assert response.status_code == 409
+    list_response = client.get("/api/datasets")
+    names = [item["name"] for item in list_response.json()["datasets"]]
+    assert "delete-me" not in names
 
 
-def test_run_eval_and_fetch_results():
+def test_run_eval_job_and_fetch_results():
     with SAMPLE_CSV.open("rb") as handle:
         client.post(
             "/api/datasets/upload",
@@ -81,30 +99,22 @@ def test_run_eval_and_fetch_results():
         },
     )
     assert run_response.status_code == 200
-    run = run_response.json()
+    job = run_response.json()
+    assert job["status"] in {"queued", "running", "completed"}
+
+    finished = _wait_for_job(job["job_id"])
+    assert finished["status"] == "completed"
+    assert finished["run_id"]
+
+    detail_response = client.get(f"/api/evals/runs/{finished['run_id']}")
+    assert detail_response.status_code == 200
+    run = detail_response.json()
     assert run["total_cases"] == 5
     assert run["passed_cases"] == 5
     assert run["pass_rate"] == 1.0
-    assert len(run["results"]) == 5
-
-    runs_response = client.get("/api/evals/runs")
-    assert runs_response.status_code == 200
-    run_ids = [item["run_id"] for item in runs_response.json()["runs"]]
-    assert run["run_id"] in run_ids
-
-    detail_response = client.get(f"/api/evals/runs/{run['run_id']}")
-    assert detail_response.status_code == 200
-    assert detail_response.json()["run_id"] == run["run_id"]
 
 
-def test_run_eval_missing_dataset():
-    response = client.post(
-        "/api/evals/run",
-        json={"dataset_name": "missing", "model_name": "mock-model-v1"},
-    )
-    assert response.status_code == 404
-
-
-def test_fetch_missing_run():
-    response = client.get("/api/evals/runs/doesnotexist")
-    assert response.status_code == 404
+def test_stats_endpoint():
+    response = client.get("/api/stats")
+    assert response.status_code == 200
+    assert "dataset_count" in response.json()

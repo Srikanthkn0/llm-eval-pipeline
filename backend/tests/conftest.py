@@ -5,6 +5,8 @@ import pytest
 
 os.environ["DATA_DIR"] = str(Path(__file__).resolve().parent / "tmp_data")
 os.environ["FRONTEND_ORIGINS"] = "http://localhost:5173"
+os.environ["APP_ENV"] = "development"
+os.environ["ALLOW_MOCK_MODEL"] = "true"
 
 from app.database import init_db  # noqa: E402
 

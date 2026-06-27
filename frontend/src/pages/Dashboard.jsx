@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { fetchHealth, fetchStats } from "../api/client.js";
+import { fetchHealth, fetchStats, getApiBaseUrl } from "../api/client.js";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const API_BASE_URL = getApiBaseUrl();
 
 export default function Dashboard() {
   const [health, setHealth] = useState(null);

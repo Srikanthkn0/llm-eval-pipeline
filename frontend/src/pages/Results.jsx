@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchEvalRun, fetchEvalRuns } from "../api/client.js";
+import { formatModelName } from "../utils/models.js";
 
 export default function Results({ selectedRunId, onSelectRun }) {
   const [runs, setRuns] = useState([]);
@@ -84,7 +85,7 @@ export default function Results({ selectedRunId, onSelectRun }) {
                 <tr key={run.run_id}>
                   <td className="mono">{run.run_id}</td>
                   <td>{run.dataset_name}</td>
-                  <td>{run.model_name}</td>
+                  <td>{formatModelName(run.model_name)}</td>
                   <td>{(run.pass_rate * 100).toFixed(1)}%</td>
                   <td>{new Date(run.created_at).toLocaleString()}</td>
                   <td>

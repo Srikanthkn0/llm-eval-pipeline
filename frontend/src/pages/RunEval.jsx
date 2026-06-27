@@ -139,7 +139,7 @@ export default function RunEval({ onRunComplete }) {
               >
                 {models.map((model) => (
                   <option key={model.id} value={model.id}>
-                    {model.label} ({model.provider})
+                    {model.label}
                   </option>
                 ))}
               </select>

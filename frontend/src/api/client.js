@@ -1,7 +1,20 @@
-const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
-const API_BASE_URL =
-  configuredBaseUrl ||
-  (import.meta.env.PROD ? "" : "http://localhost:8000");
+function resolveApiBaseUrl() {
+  const configured = import.meta.env.VITE_API_BASE_URL?.trim() || "";
+  const isLocalhost =
+    configured.includes("localhost") || configured.includes("127.0.0.1");
+
+  if (import.meta.env.PROD) {
+    // Ignore dev .env files accidentally uploaded to Vercel; use same-origin proxy.
+    if (configured && !isLocalhost) {
+      return configured;
+    }
+    return "";
+  }
+
+  return configured || "http://localhost:8000";
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
 
 export function getApiBaseUrl() {
   if (API_BASE_URL) {

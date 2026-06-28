@@ -7,30 +7,36 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import settings
+from app.middleware.auth import ApiKeyMiddleware
+from app.middleware.rate_limit import RateLimitMiddleware
+from app.middleware.request_context import RequestContextMiddleware
+from app.middleware.security import SecurityHeadersMiddleware
 from app.database import init_db
-from app.routes import datasets, evals, health
+from app.routes import datasets, evals, guard, health, logs
 from app.services.dataset_service import list_datasets, save_dataset
 from app.services.job_service import recover_stale_jobs
 
 logger = logging.getLogger(__name__)
 
-SAMPLE_DATASET = (
-    Path(__file__).resolve().parent.parent / "sample_data" / "sample_eval.csv"
-)
+SAMPLE_DIR = Path(__file__).resolve().parent.parent / "sample_data"
+SEED_DATASETS = {
+    "sample": SAMPLE_DIR / "sample_eval.csv",
+    "general": SAMPLE_DIR / "general_eval.csv",
+}
 
 
-def _seed_sample_dataset() -> None:
-    if not SAMPLE_DATASET.exists():
-        return
-    if any(dataset.name == "sample" for dataset in list_datasets()):
-        return
-    save_dataset("sample", SAMPLE_DATASET.read_text(encoding="utf-8"), replace=True)
+def _seed_datasets() -> None:
+    existing = {dataset.name for dataset in list_datasets()}
+    for name, path in SEED_DATASETS.items():
+        if not path.exists() or name in existing:
+            continue
+        save_dataset(name, path.read_text(encoding="utf-8"), replace=True)
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     init_db()
-    _seed_sample_dataset()
+    _seed_datasets()
     recovered = recover_stale_jobs()
     if recovered:
         logger.warning("Marked %s stale eval job(s) as failed on startup.", recovered)
@@ -50,10 +56,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(ApiKeyMiddleware)
+app.add_middleware(RateLimitMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RequestContextMiddleware)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+)
 
 app.include_router(health.router, tags=["health"])
 app.include_router(datasets.router, prefix="/api", tags=["datasets"])
 app.include_router(evals.router, prefix="/api", tags=["evals"])
+app.include_router(logs.router, prefix="/api", tags=["logs"])
+app.include_router(guard.router, prefix="/api", tags=["guard"])
 
 
 @app.exception_handler(HTTPException)

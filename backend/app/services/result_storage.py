@@ -125,7 +125,9 @@ def load_run(run_id: str) -> EvalRunResponse:
     )
 
 
-def get_stats() -> dict[str, float | int]:
+def get_stats() -> dict[str, float | int | list | None]:
+    from app.services.request_log_store import get_request_stats
+
     with get_connection() as conn:
         dataset_count = fetchone(conn, "SELECT COUNT(*) AS count FROM datasets")
         run_count = fetchone(conn, "SELECT COUNT(*) AS count FROM eval_runs")
@@ -138,10 +140,13 @@ def get_stats() -> dict[str, float | int]:
             LIMIT 1
             """,
         )
+
+    request_stats = get_request_stats()
     return {
         "dataset_count": dataset_count["count"] if dataset_count else 0,
         "run_count": run_count["count"] if run_count else 0,
         "latest_pass_rate": latest["pass_rate"] if latest else None,
         "latest_average_score": latest["average_score"] if latest else None,
         "latest_run_at": latest["created_at"] if latest else None,
+        **request_stats,
     }

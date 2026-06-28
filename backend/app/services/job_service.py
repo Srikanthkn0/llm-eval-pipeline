@@ -127,8 +127,26 @@ async def run_job(job_id: str, request: EvalRunRequest) -> None:
         _update_job(job_id, status="failed", error=str(exc))
 
 
+def count_active_jobs() -> int:
+    with get_connection() as conn:
+        row = fetchone(
+            conn,
+            "SELECT COUNT(*) AS count FROM eval_jobs WHERE status IN ('queued', 'running')",
+        )
+    return row["count"] if row else 0
+
+
 def queue_job(request: EvalRunRequest) -> EvalJobResponse:
     validate_model_choice(request.model_name)
+    active = count_active_jobs()
+    if active >= settings.MAX_CONCURRENT_JOBS:
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"Too many eval jobs running ({active}). "
+                f"Max concurrent jobs: {settings.MAX_CONCURRENT_JOBS}."
+            ),
+        )
     return create_job(request)
 
 

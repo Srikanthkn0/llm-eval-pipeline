@@ -86,6 +86,9 @@ export default function RunEval({ onRunComplete, onNavigate }) {
   const progressPct =
     job && job.total > 0 ? Math.round((job.progress / job.total) * 100) : 0;
 
+  const selectedModel = models.find((model) => model.id === modelName);
+  const isMock = selectedModel && !selectedModel.is_live;
+
   return (
     <div className="stack">
       <header className="page-header">
@@ -143,6 +146,12 @@ export default function RunEval({ onRunComplete, onNavigate }) {
                   </option>
                 ))}
               </select>
+              {isMock && (
+                <span className="field-hint">
+                  Mock matches a few hardcoded phrases — no LLM call. Use dataset{" "}
+                  <code>general</code> to see it fail, or pick a Gemini/OpenAI model.
+                </span>
+              )}
             </label>
 
             <label className="field">

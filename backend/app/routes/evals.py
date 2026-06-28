@@ -6,11 +6,10 @@ from app.models import (
     EvalRunRequest,
     EvalRunResponse,
     ModelListResponse,
-    StatsResponse,
 )
 from app.services.job_service import get_job, queue_job, run_job
 from app.services.llm_client import list_available_models
-from app.services.result_storage import get_stats, list_runs, load_run
+from app.services.result_storage import list_runs, load_run
 
 router = APIRouter()
 
@@ -18,18 +17,9 @@ router = APIRouter()
 @router.get("/models", response_model=ModelListResponse)
 async def get_models():
     models = list_available_models()
-    default_model = "mock-model-v1"
-    for candidate in ("gemini-2.5-flash-lite", "gemini-2.5-flash", "gpt-4o-mini", "llama-3.1-8b-instant", "mock-model-v1"):
-        if any(model["id"] == candidate and model["available"] for model in models):
-            default_model = candidate
-            break
+    live = [m for m in models if m.get("is_live", True)]
+    default_model = live[0]["id"] if live else (models[0]["id"] if models else "mock-model-v1")
     return ModelListResponse(models=models, default_model=default_model)
-
-
-@router.get("/stats", response_model=StatsResponse)
-async def get_dashboard_stats():
-    stats = get_stats()
-    return StatsResponse(**stats)
 
 
 @router.post("/evals/run", response_model=EvalJobResponse)

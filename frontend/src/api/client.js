@@ -14,7 +14,13 @@ function resolveApiBaseUrl() {
 }
 
 const API_BASE_URL = resolveApiBaseUrl();
+const API_KEY = import.meta.env.VITE_API_KEY?.trim() || "";
 const MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
+
+function withAuthHeaders(headers = {}) {
+  if (!API_KEY) return headers;
+  return { ...headers, "X-API-Key": API_KEY };
+}
 
 export function getApiBaseUrl() {
   if (API_BASE_URL) {
@@ -42,7 +48,11 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 90000, retries = 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const response = await fetch(url, { ...options, signal: controller.signal });
+      const response = await fetch(url, {
+        ...options,
+        headers: withAuthHeaders(options.headers),
+        signal: controller.signal,
+      });
       return response;
     } catch (error) {
       lastError = error;
@@ -51,14 +61,10 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 90000, retries = 
         continue;
       }
       if (error.name === "AbortError") {
-        throw new Error(
-          "Request timed out. The API may be waking up on Render free tier. Wait 30 seconds and retry."
-        );
+        throw new Error("Timed out. Render may be waking up — wait 30s and retry.");
       }
       const target = API_BASE_URL || (typeof window !== "undefined" ? window.location.origin : "API");
-      throw new Error(
-        `Failed to reach API at ${target}. The backend may be starting up. Refresh in 30 seconds.`
-      );
+      throw new Error(`Can't reach ${target}. Backend may be cold — retry in 30s.`);
     } finally {
       clearTimeout(timer);
     }
@@ -74,6 +80,34 @@ export async function fetchHealth() {
 
 export async function fetchStats() {
   const response = await fetchWithTimeout(`${API_BASE_URL}/api/stats`);
+  return parseResponse(response);
+}
+
+export async function fetchGuardRules(scope) {
+  const params = scope ? `?scope=${encodeURIComponent(scope)}` : "";
+  const response = await fetchWithTimeout(`${API_BASE_URL}/api/guard/rules${params}`);
+  return parseResponse(response);
+}
+
+export async function scanGuardText(text, scope = "input") {
+  const response = await fetchWithTimeout(`${API_BASE_URL}/api/guard/scan`, {
+    method: "POST",
+    headers: withAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ text, scope }),
+  });
+  return parseResponse(response);
+}
+
+export async function fetchLogs({ limit = 50, offset = 0, decision, provider, runId } = {}) {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+  });
+  if (decision) params.set("decision", decision);
+  if (provider) params.set("provider", provider);
+  if (runId) params.set("run_id", runId);
+
+  const response = await fetchWithTimeout(`${API_BASE_URL}/api/logs?${params}`);
   return parseResponse(response);
 }
 
@@ -137,9 +171,7 @@ export async function waitForEvalJob(
 
   while (true) {
     if (Date.now() - started > timeoutMs) {
-      throw new Error(
-        "Evaluation timed out after 15 minutes. Check Results for partial progress or retry."
-      );
+      throw new Error("Eval timed out after 15 min. Check Results or retry.");
     }
 
     const job = await fetchEvalJob(jobId);

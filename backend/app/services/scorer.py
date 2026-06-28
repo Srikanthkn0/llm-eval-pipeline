@@ -18,13 +18,19 @@ def keyword_overlap_score(actual: str, expected: str) -> float:
     return len(overlap) / len(expected_words)
 
 
-def score_output(actual: str, expected: str) -> tuple[float, bool]:
+def score_output_with_hits(actual: str, expected: str) -> tuple[float, bool, list[str]]:
     if actual == expected:
-        return 1.0, True
+        return 1.0, True, ["exact_match"]
 
     if normalize_text(actual) == normalize_text(expected):
-        return 1.0, True
+        return 1.0, True, ["normalized_match"]
 
     overlap = keyword_overlap_score(actual, expected)
     passed = overlap >= PASS_THRESHOLD
-    return overlap, passed
+    hit = f"keyword_overlap:{overlap:.2f}"
+    return overlap, passed, [hit]
+
+
+def score_output(actual: str, expected: str) -> tuple[float, bool]:
+    score, passed, _hits = score_output_with_hits(actual, expected)
+    return score, passed

@@ -38,6 +38,34 @@ class Settings:
     LLM_MAX_RETRIES: int = int(os.getenv("LLM_MAX_RETRIES", "2"))
     MAX_UPLOAD_BYTES: int = int(os.getenv("MAX_UPLOAD_BYTES", str(2 * 1024 * 1024)))
     STALE_JOB_MINUTES: int = int(os.getenv("STALE_JOB_MINUTES", "30"))
+    API_KEY: str = os.getenv("API_KEY", "")
+    REQUIRE_API_KEY: bool = os.getenv("REQUIRE_API_KEY", "").lower() in {"1", "true", "yes"}
+    RATE_LIMIT_PER_MIN: int = int(os.getenv("RATE_LIMIT_PER_MIN", "120"))
+    RATE_LIMIT_EVALS_PER_MIN: int = int(os.getenv("RATE_LIMIT_EVALS_PER_MIN", "10"))
+    RATE_LIMIT_SCAN_PER_MIN: int = int(os.getenv("RATE_LIMIT_SCAN_PER_MIN", "30"))
+    MAX_EVAL_ROWS: int = int(os.getenv("MAX_EVAL_ROWS", "500"))
+    MAX_PROMPT_CHARS: int = int(os.getenv("MAX_PROMPT_CHARS", "8000"))
+    MAX_CONCURRENT_JOBS: int = int(os.getenv("MAX_CONCURRENT_JOBS", "3"))
+    ML_GUARD_ENABLED: bool = os.getenv("ML_GUARD_ENABLED", "true").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+    ML_GUARD_BACKEND: str = os.getenv("ML_GUARD_BACKEND", "sklearn")
+    ML_GUARD_THRESHOLD: float = float(os.getenv("ML_GUARD_THRESHOLD", "0.60"))
+    ML_GUARD_WARN_THRESHOLD: float = float(os.getenv("ML_GUARD_WARN_THRESHOLD", "0.45"))
+    ML_GUARD_MODEL_PATH: Path = Path(
+        os.getenv(
+            "ML_GUARD_MODEL_PATH",
+            str(BASE_DIR / "data" / "models" / "injection_classifier.joblib"),
+        )
+    )
+
+    @property
+    def require_api_key(self) -> bool:
+        if self.REQUIRE_API_KEY:
+            return True
+        return self.is_production and bool(self.API_KEY)
 
     @property
     def use_postgres(self) -> bool:
@@ -46,6 +74,17 @@ class Settings:
     @property
     def is_production(self) -> bool:
         return self.APP_ENV.lower() == "production"
+
+    @property
+    def has_llm_key(self) -> bool:
+        return bool(self.GEMINI_API_KEY or self.GROQ_API_KEY or self.OPENAI_API_KEY)
+
+    @property
+    def mock_allowed(self) -> bool:
+        # Dev always; prod if ALLOW_MOCK_MODEL or no API keys configured.
+        if self.ALLOW_MOCK_MODEL or not self.is_production:
+            return True
+        return not self.has_llm_key
 
 
 settings = Settings()

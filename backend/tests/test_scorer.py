@@ -1,6 +1,11 @@
 import asyncio
 
-from app.services.scorer import keyword_overlap_score, normalize_text, score_output
+from app.services.scorer import (
+    keyword_overlap_score,
+    normalize_text,
+    score_output,
+    score_output_with_hits,
+)
 
 
 def test_normalize_text():
@@ -11,6 +16,13 @@ def test_exact_match():
     score, passed = score_output("Paris", "Paris")
     assert score == 1.0
     assert passed is True
+
+
+def test_score_output_with_hits_exact():
+    score, passed, hits = score_output_with_hits("Paris", "Paris")
+    assert score == 1.0
+    assert passed is True
+    assert hits == ["exact_match"]
 
 
 def test_normalized_match():

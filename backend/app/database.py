@@ -58,6 +58,29 @@ CREATE INDEX IF NOT EXISTS idx_eval_case_results_run_id
     ON eval_case_results(run_id);
 CREATE INDEX IF NOT EXISTS idx_eval_jobs_status
     ON eval_jobs(status);
+
+CREATE TABLE IF NOT EXISTS request_logs (
+    request_id TEXT PRIMARY KEY,
+    created_at TEXT NOT NULL,
+    run_id TEXT,
+    model_name TEXT NOT NULL,
+    prompt_excerpt TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    decision TEXT NOT NULL,
+    rule_hits_json TEXT NOT NULL,
+    latency_ms REAL NOT NULL,
+    final_outcome TEXT NOT NULL,
+    score REAL NOT NULL,
+    trace_id TEXT DEFAULT '',
+    phase TEXT DEFAULT 'complete'
+);
+
+CREATE INDEX IF NOT EXISTS idx_request_logs_created_at
+    ON request_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_request_logs_decision
+    ON request_logs(decision);
+CREATE INDEX IF NOT EXISTS idx_request_logs_provider
+    ON request_logs(provider);
 """
 
 POSTGRES_SCHEMA = """
@@ -112,11 +135,52 @@ CREATE INDEX IF NOT EXISTS idx_eval_case_results_run_id
     ON eval_case_results(run_id);
 CREATE INDEX IF NOT EXISTS idx_eval_jobs_status
     ON eval_jobs(status);
+
+CREATE TABLE IF NOT EXISTS request_logs (
+    request_id TEXT PRIMARY KEY,
+    created_at TEXT NOT NULL,
+    run_id TEXT,
+    model_name TEXT NOT NULL,
+    prompt_excerpt TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    decision TEXT NOT NULL,
+    rule_hits_json TEXT NOT NULL,
+    latency_ms DOUBLE PRECISION NOT NULL,
+    final_outcome TEXT NOT NULL,
+    score DOUBLE PRECISION NOT NULL,
+    trace_id TEXT DEFAULT '',
+    phase TEXT DEFAULT 'complete'
+);
+
+CREATE INDEX IF NOT EXISTS idx_request_logs_created_at
+    ON request_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_request_logs_decision
+    ON request_logs(decision);
+CREATE INDEX IF NOT EXISTS idx_request_logs_provider
+    ON request_logs(provider);
 """
 
 
 def ph() -> str:
     return "%s" if settings.use_postgres else "?"
+
+
+def _migrate_request_logs(conn: Any) -> None:
+    if settings.use_postgres:
+        with conn.cursor() as cur:
+            cur.execute(
+                "ALTER TABLE request_logs ADD COLUMN IF NOT EXISTS trace_id TEXT DEFAULT ''"
+            )
+            cur.execute(
+                "ALTER TABLE request_logs ADD COLUMN IF NOT EXISTS phase TEXT DEFAULT 'complete'"
+            )
+        return
+
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(request_logs)")}
+    if "trace_id" not in columns:
+        conn.execute("ALTER TABLE request_logs ADD COLUMN trace_id TEXT DEFAULT ''")
+    if "phase" not in columns:
+        conn.execute("ALTER TABLE request_logs ADD COLUMN phase TEXT DEFAULT 'complete'")
 
 
 def init_db() -> None:
@@ -126,12 +190,14 @@ def init_db() -> None:
         with psycopg.connect(DATABASE_URL) as conn:
             with conn.cursor() as cur:
                 cur.execute(POSTGRES_SCHEMA)
+            _migrate_request_logs(conn)
             conn.commit()
         return
 
     Path(DATABASE_PATH).parent.mkdir(parents=True, exist_ok=True)
     with get_connection() as conn:
         conn.executescript(SQLITE_SCHEMA)
+        _migrate_request_logs(conn)
         conn.commit()
 
 

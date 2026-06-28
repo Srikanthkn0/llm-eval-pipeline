@@ -1,5 +1,4 @@
-# Render Blueprint — production settings (free tier)
-# Use GEMINI_API_KEY on Render (Groq blocks many cloud IPs via Cloudflare).
+# Render backend — see DEPLOYMENT.md
 
 services:
   - type: web
@@ -10,10 +9,24 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --workers 1 --timeout 120
     envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
       - key: APP_ENV
         value: production
+      - key: APP_NAME
+        value: LLM Eval Pipeline API
       - key: FRONTEND_ORIGINS
-        value: https://llm-eval-pipeline.vercel.app
+        value: https://llm-eval-pipeline.vercel.app,http://localhost:5173
+      - key: ALLOW_MOCK_MODEL
+        value: "true"
+      - key: API_KEY
+        sync: false
+      - key: REQUIRE_API_KEY
+        value: "false"
+      - key: MAX_EVAL_ROWS
+        value: "500"
+      - key: MAX_CONCURRENT_JOBS
+        value: "3"
       - key: DATABASE_URL
         sync: false
       - key: GEMINI_API_KEY

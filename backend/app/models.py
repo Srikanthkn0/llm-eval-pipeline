@@ -31,11 +31,85 @@ class ModelInfo(BaseModel):
     label: str
     provider: str
     available: bool
+    is_live: bool = True
 
 
 class ModelListResponse(BaseModel):
     models: List[ModelInfo]
     default_model: str
+
+
+class GuardRuleInfo(BaseModel):
+    id: str
+    name: str
+    category: str
+    pattern: str
+    match_type: str
+    severity: str = "block"
+    scope: str = "input"
+    description: str
+
+
+class GuardRulesResponse(BaseModel):
+    count: int
+    rules: List[GuardRuleInfo]
+
+
+class GuardScanRequest(BaseModel):
+    text: str
+    scope: str = "input"
+
+
+class GuardRuleHit(BaseModel):
+    rule_id: str
+    name: str
+    category: str
+    pattern: str
+    match_type: str
+    severity: str = "block"
+    scope: str = "input"
+    description: str
+
+
+class GuardScanResponse(BaseModel):
+    allowed: bool
+    decision: str
+    matched_rule_ids: List[str]
+    hits: List[GuardRuleHit]
+    ml_enabled: bool = False
+    ml_loaded: bool = False
+    ml_score: Optional[float] = None
+    ml_label: Optional[str] = None
+
+
+class ProviderStat(BaseModel):
+    provider: str
+    count: int
+    avg_latency_ms: Optional[float] = None
+
+
+class RequestLogEntry(BaseModel):
+    request_id: str
+    created_at: str
+    prompt_excerpt: str
+    provider: str
+    model_name: str
+    decision: str
+    rule_hits: List[str]
+    rule_hit_count: int
+    latency_ms: float
+    final_outcome: str
+    score: float
+    run_id: Optional[str] = None
+    trace_id: str = ""
+    phase: str = "complete"
+
+
+class LogsListResponse(BaseModel):
+    count: int
+    limit: int
+    offset: int
+    logs: List[RequestLogEntry]
 
 
 class StatsResponse(BaseModel):
@@ -44,6 +118,14 @@ class StatsResponse(BaseModel):
     latest_pass_rate: Optional[float] = None
     latest_average_score: Optional[float] = None
     latest_run_at: Optional[str] = None
+    total_requests: int = 0
+    pass_count: int = 0
+    fail_count: int = 0
+    block_count: int = 0
+    warn_count: int = 0
+    request_pass_rate: Optional[float] = None
+    avg_latency_ms: Optional[float] = None
+    by_provider: List[ProviderStat] = []
 
 
 class EvalRunRequest(BaseModel):

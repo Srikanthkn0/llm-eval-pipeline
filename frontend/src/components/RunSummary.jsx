@@ -24,6 +24,10 @@ export default function RunSummary({ run }) {
         <span className="stat-value">{run.average_latency_ms.toFixed(0)} ms</span>
       </div>
       <div className="stat">
+        <span className="stat-label">Model</span>
+        <span className="stat-value">{run.model_name}</span>
+      </div>
+      <div className="stat">
         <span className="stat-label">Run</span>
         <span className="stat-value mono">{run.run_id}</span>
       </div>

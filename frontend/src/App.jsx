@@ -32,16 +32,11 @@ export default function App() {
 
   return (
     <div className="app">
-      <div className="app-glow" aria-hidden="true" />
-
       <header className="app-header">
         <div className="header-inner">
           <div className="brand">
-            <Logo size={36} />
-            <div className="brand-text">
-              <span className="brand-name">LLM Eval Pipeline</span>
-              <span className="brand-tagline">Upload datasets · Run evals · Track results</span>
-            </div>
+            <Logo size={26} />
+            <h1>LLM Eval</h1>
           </div>
           <nav className="nav-tabs" aria-label="Main">
             {TABS.map((tab) => (
@@ -72,18 +67,12 @@ export default function App() {
 
       <footer className="app-footer">
         <div className="footer-inner">
-          <div className="footer-brand">
-            <Logo size={20} />
-            <span>LLM evaluation pipeline — open source</span>
-          </div>
-          <div className="footer-links">
-            <a href={GITHUB_URL} target="_blank" rel="noreferrer">
-              GitHub
-            </a>
-            <a href={`${API_URL}/docs`} target="_blank" rel="noreferrer">
-              API Docs
-            </a>
-          </div>
+          <a href={GITHUB_URL} target="_blank" rel="noreferrer">
+            GitHub
+          </a>
+          <a href={`${API_URL}/docs`} target="_blank" rel="noreferrer">
+            API
+          </a>
         </div>
       </footer>
     </div>

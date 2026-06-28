@@ -34,28 +34,13 @@ export default function Dashboard({ onNavigate }) {
 
   return (
     <div className="stack">
-      <section className="hero-card">
-        <div className="hero-content">
-          <h2>Evaluate LLM outputs at scale</h2>
-          <p>
-            Upload CSV test cases, run them against Gemini or mock models, score each response,
-            and track pass rates over time. Built for prompt checks and CI gates.
-          </p>
-          <div className="pill-row">
-            <span className="pill">CSV datasets</span>
-            <span className="pill pill-secondary">Async jobs</span>
-            <span className="pill">Request logs</span>
-          </div>
-        </div>
-      </section>
-
       <header className="page-header">
         <h2>Overview</h2>
-        <p>Health check and aggregate stats from the API.</p>
+        <p>Backend status and eval history.</p>
       </header>
 
       <section className="card">
-        {loading && <p className="status-text">Connecting to API...</p>}
+        {loading && <p className="status-text">Connecting...</p>}
 
         {error && (
           <div className="alert alert-error">
@@ -75,7 +60,7 @@ export default function Dashboard({ onNavigate }) {
                 <span className="stat-value stat-value-lg">
                   {stats?.latest_pass_rate != null
                     ? `${(stats.latest_pass_rate * 100).toFixed(1)}%`
-                    : "—"}
+                    : "-"}
                 </span>
               </div>
               <div className="stat">
@@ -91,20 +76,12 @@ export default function Dashboard({ onNavigate }) {
                 <span className="stat-value">
                   {stats?.latest_average_score != null
                     ? stats.latest_average_score.toFixed(2)
-                    : "—"}
+                    : "-"}
                 </span>
               </div>
               <div className="stat">
                 <span className="stat-label">Requests</span>
                 <span className="stat-value">{stats?.total_requests ?? 0}</span>
-              </div>
-              <div className="stat">
-                <span className="stat-label">Req pass rate</span>
-                <span className="stat-value">
-                  {stats?.request_pass_rate != null
-                    ? `${(stats.request_pass_rate * 100).toFixed(1)}%`
-                    : "—"}
-                </span>
               </div>
             </div>
 
@@ -128,26 +105,26 @@ export default function Dashboard({ onNavigate }) {
               <div className="status-list-item">
                 <span className="label">Gemini</span>
                 <span className="value">
-                  {health.llm_providers?.gemini ? "configured" : "—"}
+                  {health.llm_providers?.gemini ? "yes" : "no"}
                 </span>
               </div>
               <div className="status-list-item">
                 <span className="label">Groq</span>
                 <span className="value">
-                  {health.llm_providers?.groq ? "configured" : "—"}
+                  {health.llm_providers?.groq ? "yes" : "no"}
                 </span>
               </div>
               <div className="status-list-item">
                 <span className="label">OpenAI</span>
                 <span className="value">
-                  {health.llm_providers?.openai ? "configured" : "—"}
+                  {health.llm_providers?.openai ? "yes" : "no"}
                 </span>
               </div>
             </div>
 
             {health.status === "degraded" && (
               <div className="alert alert-warn">
-                No LLM configured. Set <code>GEMINI_API_KEY</code> on Render or{" "}
+                No LLM key configured. Set <code>GEMINI_API_KEY</code> on Render or{" "}
                 <code>ALLOW_MOCK_MODEL=true</code>.
               </div>
             )}

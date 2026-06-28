@@ -24,8 +24,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     def _limit_for_path(self, path: str) -> int:
         if path.startswith("/api/evals/run"):
             return settings.RATE_LIMIT_EVALS_PER_MIN
-        if path.startswith("/api/guard/scan"):
-            return settings.RATE_LIMIT_SCAN_PER_MIN
         return settings.RATE_LIMIT_PER_MIN
 
     def _check(self, key: str, limit: int) -> Response | None:

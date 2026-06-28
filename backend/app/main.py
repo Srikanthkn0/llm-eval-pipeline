@@ -12,7 +12,7 @@ from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.request_context import RequestContextMiddleware
 from app.middleware.security import SecurityHeadersMiddleware
 from app.database import init_db
-from app.routes import datasets, evals, guard, health, logs
+from app.routes import datasets, evals, health, logs
 from app.services.dataset_service import list_datasets, save_dataset
 from app.services.job_service import recover_stale_jobs
 
@@ -70,7 +70,6 @@ app.include_router(health.router, tags=["health"])
 app.include_router(datasets.router, prefix="/api", tags=["datasets"])
 app.include_router(evals.router, prefix="/api", tags=["evals"])
 app.include_router(logs.router, prefix="/api", tags=["logs"])
-app.include_router(guard.router, prefix="/api", tags=["guard"])
 
 
 @app.exception_handler(HTTPException)

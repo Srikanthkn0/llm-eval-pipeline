@@ -3,8 +3,6 @@ from fastapi import APIRouter
 from app.config import settings
 from app.database import check_db
 from app.models import HealthResponse
-from app.services.guard.engine import list_rules
-from app.services.guard.ml_classifier import classifier_status
 from app.services.job_service import count_active_jobs
 from app.services.llm_client import provider_status
 
@@ -50,15 +48,9 @@ async def readiness():
     return payload
 
 
-@router.get("/health/guard")
-async def guard_status():
-    input_rules = [r for r in list_rules("input") if r.severity == "block"]
-    output_rules = [r for r in list_rules("output") if r.severity == "block"]
+@router.get("/health/status")
+async def service_status():
     return {
-        "input_block_rules": len(input_rules),
-        "output_block_rules": len(output_rules),
-        "normalization": "NFKC + zero-width strip",
-        "ml_classifier": classifier_status(),
         "active_jobs": count_active_jobs(),
         "api_key_required": settings.require_api_key,
     }

@@ -9,7 +9,7 @@ PUBLIC_PATHS = {
     "/health",
     "/health/live",
     "/health/ready",
-    "/health/guard",
+    "/health/status",
     "/docs",
     "/openapi.json",
     "/redoc",
@@ -23,10 +23,6 @@ class ApiKeyMiddleware(BaseHTTPMiddleware):
 
         path = request.url.path
         if request.method == "OPTIONS" or path in PUBLIC_PATHS:
-            return await call_next(request)
-
-        # Read-only guard rules are public for transparency
-        if request.method == "GET" and path == "/api/guard/rules":
             return await call_next(request)
 
         provided = request.headers.get("x-api-key", "")

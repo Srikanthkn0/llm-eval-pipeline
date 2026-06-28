@@ -36,38 +36,22 @@ export default function Dashboard({ onNavigate }) {
     <div className="stack">
       <section className="hero-card">
         <div className="hero-content">
-          <h2>Production-ready LLM evaluation</h2>
+          <h2>Evaluate LLM outputs at scale</h2>
           <p>
-            Upload datasets, run evals across providers, and block prompt injections with a hybrid
-            guard — rule engine plus ML classifier. Full request logging built in.
+            Upload CSV test cases, run them against Gemini or mock models, score each response,
+            and track pass rates over time. Built for prompt checks and CI gates.
           </p>
           <div className="pill-row">
-            <span className="pill">Hybrid guard</span>
-            <span className="pill pill-secondary">Multi-provider</span>
+            <span className="pill">CSV datasets</span>
+            <span className="pill pill-secondary">Async jobs</span>
             <span className="pill">Request logs</span>
-            <span className="pill pill-secondary">Rate limits</span>
           </div>
         </div>
       </section>
 
-      <div className="feature-grid">
-        <div className="feature-card">
-          <h4>ML + rules guard</h4>
-          <p>40+ input rules and a trained classifier catch paraphrased injections rules miss.</p>
-        </div>
-        <div className="feature-card">
-          <h4>Provider adapters</h4>
-          <p>Gemini, Groq, OpenAI-compatible APIs with consistent request/response shape.</p>
-        </div>
-        <div className="feature-card">
-          <h4>Observability</h4>
-          <p>SQLite request logs, pass/fail stats, latency tracking, and trace IDs per eval.</p>
-        </div>
-      </div>
-
       <header className="page-header">
-        <h2>System overview</h2>
-        <p>Live health check and aggregate stats from the API.</p>
+        <h2>Overview</h2>
+        <p>Health check and aggregate stats from the API.</p>
       </header>
 
       <section className="card">
@@ -124,7 +108,7 @@ export default function Dashboard({ onNavigate }) {
               </div>
             </div>
 
-            <h3>Infrastructure</h3>
+            <h3>System</h3>
             <div className="status-list">
               <div className="status-list-item">
                 <span className="label">API</span>

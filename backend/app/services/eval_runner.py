@@ -4,9 +4,8 @@ from typing import Callable
 
 from app.config import settings
 from app.models import EvalCaseResult, EvalRunResponse
-from app.services.dataset_service import load_dataset
 from app.providers.registry import complete
-from app.services.guard.engine import BLOCKED_INPUT_RESPONSE, BLOCKED_OUTPUT_RESPONSE, scan_input, scan_output
+from app.services.dataset_service import load_dataset
 from app.services.llm_client import build_prompt, validate_model_choice
 from app.services.request_log_store import record_request
 from app.services.result_storage import save_run
@@ -38,13 +37,6 @@ async def run_evaluation(
 ) -> EvalRunResponse:
     validate_model_choice(model_name)
 
-    allowed, template_hits = scan_input(prompt_template)
-    if not allowed:
-        raise ValueError(
-            f"Prompt template blocked by input guard ({', '.join(template_hits)}). "
-            "Remove injection phrasing and retry."
-        )
-
     rows = load_dataset(dataset_name)
     total_cases = len(rows)
     _validate_eval_bounds(prompt_template, total_cases)
@@ -61,35 +53,6 @@ async def run_evaluation(
                 f"Row {index} input exceeds {settings.MAX_PROMPT_CHARS} characters."
             )
 
-        case_allowed, guard_hits = scan_input(row["input"])
-        if not case_allowed:
-            record_request(
-                prompt=row["input"],
-                provider="guardrail",
-                model_name=model_name,
-                decision="block",
-                rule_hits=guard_hits,
-                latency_ms=0,
-                final_outcome=BLOCKED_INPUT_RESPONSE,
-                score=0,
-                run_id=run_id,
-                phase="input",
-            )
-            results.append(
-                EvalCaseResult(
-                    input=row["input"],
-                    expected=row["expected_output"],
-                    actual=BLOCKED_INPUT_RESPONSE,
-                    score=0,
-                    passed=False,
-                    latency_ms=0,
-                    category=row.get("category") or None,
-                )
-            )
-            if progress_callback:
-                progress_callback(index, total_cases)
-            continue
-
         prompt = build_prompt(prompt_template, row["input"])
         if len(prompt) > settings.MAX_PROMPT_CHARS:
             raise ValueError(f"Built prompt for row {index} exceeds max length.")
@@ -98,40 +61,8 @@ async def run_evaluation(
         actual = provider_response.text
         latency_ms = provider_response.latency_ms
 
-        output_scan = scan_output(actual)
-        if output_scan.decision == "block":
-            record_request(
-                prompt=prompt,
-                provider=provider_response.provider,
-                model_name=model_name,
-                decision="block",
-                rule_hits=output_scan.matched_rule_ids,
-                latency_ms=latency_ms,
-                final_outcome=BLOCKED_OUTPUT_RESPONSE,
-                score=0,
-                run_id=run_id,
-                phase="output",
-            )
-            results.append(
-                EvalCaseResult(
-                    input=row["input"],
-                    expected=row["expected_output"],
-                    actual=BLOCKED_OUTPUT_RESPONSE,
-                    score=0,
-                    passed=False,
-                    latency_ms=round(latency_ms, 2),
-                    category=row.get("category") or None,
-                )
-            )
-            if progress_callback:
-                progress_callback(index, total_cases)
-            continue
-
         score, passed, rule_hits = score_output_with_hits(actual, row["expected_output"])
         decision = "pass" if passed else "fail"
-        if output_scan.decision == "warn":
-            decision = "warn"
-            rule_hits = [*rule_hits, *output_scan.matched_rule_ids]
 
         record_request(
             prompt=prompt,

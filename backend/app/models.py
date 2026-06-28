@@ -39,49 +39,6 @@ class ModelListResponse(BaseModel):
     default_model: str
 
 
-class GuardRuleInfo(BaseModel):
-    id: str
-    name: str
-    category: str
-    pattern: str
-    match_type: str
-    severity: str = "block"
-    scope: str = "input"
-    description: str
-
-
-class GuardRulesResponse(BaseModel):
-    count: int
-    rules: List[GuardRuleInfo]
-
-
-class GuardScanRequest(BaseModel):
-    text: str
-    scope: str = "input"
-
-
-class GuardRuleHit(BaseModel):
-    rule_id: str
-    name: str
-    category: str
-    pattern: str
-    match_type: str
-    severity: str = "block"
-    scope: str = "input"
-    description: str
-
-
-class GuardScanResponse(BaseModel):
-    allowed: bool
-    decision: str
-    matched_rule_ids: List[str]
-    hits: List[GuardRuleHit]
-    ml_enabled: bool = False
-    ml_loaded: bool = False
-    ml_score: Optional[float] = None
-    ml_label: Optional[str] = None
-
-
 class ProviderStat(BaseModel):
     provider: str
     count: int

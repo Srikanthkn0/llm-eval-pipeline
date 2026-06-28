@@ -83,21 +83,6 @@ export async function fetchStats() {
   return parseResponse(response);
 }
 
-export async function fetchGuardRules(scope) {
-  const params = scope ? `?scope=${encodeURIComponent(scope)}` : "";
-  const response = await fetchWithTimeout(`${API_BASE_URL}/api/guard/rules${params}`);
-  return parseResponse(response);
-}
-
-export async function scanGuardText(text, scope = "input") {
-  const response = await fetchWithTimeout(`${API_BASE_URL}/api/guard/scan`, {
-    method: "POST",
-    headers: withAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify({ text, scope }),
-  });
-  return parseResponse(response);
-}
-
 export async function fetchLogs({ limit = 50, offset = 0, decision, provider, runId } = {}) {
   const params = new URLSearchParams({
     limit: String(limit),

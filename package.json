@@ -1,0 +1,24 @@
+{
+  "name": "llm-eval-pipeline",
+  "version": "1.0.0",
+  "description": "[![CI](https://github.com/Srikanthkn0/llm-eval-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/Srikanthkn0/llm-eval-pipeline/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Srikanthkn0/llm-eval-pipeline.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Srikanthkn0/llm-eval-pipeline/issues"
+  },
+  "homepage": "https://github.com/Srikanthkn0/llm-eval-pipeline#readme"
+}

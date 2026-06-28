@@ -9,6 +9,8 @@ Upload a CSV of test cases, run them against an LLM, score the outputs, and stor
 - API: https://llm-eval-pipeline-api.onrender.com
 - Docs: https://llm-eval-pipeline-api.onrender.com/docs
 
+> **Related project:** Prompt-injection guardrails, ML classifier, and chat gateway live in a separate repo — [guardrail-gateway](https://github.com/Srikanthkn0/guardrail-gateway).
+
 ## Screenshots
 
 | Overview | Datasets |
@@ -21,10 +23,10 @@ Upload a CSV of test cases, run them against an LLM, score the outputs, and stor
 
 ## What it does
 
-1. You upload a CSV (`input`, `expected_output`, optional `category`) or use the bundled `sample` set.
-2. You pick a model and a prompt template with `{input}`.
+1. Upload a CSV (`input`, `expected_output`, optional `category`) or use the bundled `sample` set.
+2. Pick a model and a prompt template with `{input}`.
 3. The backend runs one LLM call per row, scores each answer, and saves the run.
-4. You read pass rate and per-case results in the UI.
+4. Read pass rate and per-case results in the UI.
 
 Async jobs matter here — LLM calls are slow, so evals run in the background with progress polling.
 
@@ -40,7 +42,7 @@ Browser → Vercel → (proxy /api) → Render → Neon
 ## Repo layout
 
 ```
-backend/     API, eval engine, tests
+backend/     API, eval engine, provider adapters, tests
 frontend/    React UI
 render.yaml  Render service config
 DEPLOYMENT.md
@@ -79,18 +81,6 @@ The `sample` dataset (5 rows) was written to match the mock's hardcoded phrases,
 
 To verify a real model: set `GEMINI_API_KEY`, pick **Gemini 2.5 Flash-Lite**, run the `general` dataset. Mock fails every row; Gemini should pass most.
 
-## Guardrails (input + output)
-
-| Phase | When | What |
-|-------|------|------|
-| Input | Before LLM | 40+ injection/jailbreak/credential rules |
-| Output | After LLM | Leak detection (system prompt, API keys, unsafe commands) |
-| Normalize | Before match | NFKC + zero-width character strip |
-
-Rules are public (`GET /api/guard/rules?scope=input|output`, **Rules** tab).
-
-Eval flow: `input scan → LLM → output scan → score`. Blocked rows never store raw unsafe output.
-
 ## Production hardening
 
 | Feature | Config |
@@ -99,10 +89,8 @@ Eval flow: `input scan → LLM → output scan → score`. Blocked rows never st
 | Rate limits | `RATE_LIMIT_*` env vars |
 | Eval bounds | `MAX_EVAL_ROWS`, `MAX_PROMPT_CHARS`, `MAX_CONCURRENT_JOBS` |
 | Request tracing | `X-Request-ID` on every response |
-| Health probes | `/health/live`, `/health/ready`, `/health/guard` |
+| Health probes | `/health/live`, `/health/ready` |
 | Security headers | `X-Content-Type-Options`, `X-Frame-Options`, etc. |
-
-**52 tests** including guard, output scan, CORS, and middleware checks.
 
 Tests:
 

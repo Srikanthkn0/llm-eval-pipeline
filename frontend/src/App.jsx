@@ -5,7 +5,6 @@ import Datasets from "./pages/Datasets.jsx";
 import RunEval from "./pages/RunEval.jsx";
 import Results from "./pages/Results.jsx";
 import Logs from "./pages/Logs.jsx";
-import Rules from "./pages/Rules.jsx";
 
 const TABS = [
   { id: "dashboard", label: "Overview" },
@@ -13,7 +12,6 @@ const TABS = [
   { id: "run", label: "Run" },
   { id: "results", label: "Results" },
   { id: "logs", label: "Logs" },
-  { id: "rules", label: "Rules" },
 ];
 
 const GITHUB_URL = "https://github.com/Srikanthkn0/llm-eval-pipeline";
@@ -42,7 +40,7 @@ export default function App() {
             <Logo size={36} />
             <div className="brand-text">
               <span className="brand-name">LLM Eval Pipeline</span>
-              <span className="brand-tagline">Guardrails · ML classifier · Observability</span>
+              <span className="brand-tagline">Upload datasets · Run evals · Track results</span>
             </div>
           </div>
           <nav className="nav-tabs" aria-label="Main">
@@ -70,14 +68,13 @@ export default function App() {
           <Results selectedRunId={selectedRunId} onSelectRun={setSelectedRunId} />
         )}
         {activeTab === "logs" && <Logs />}
-        {activeTab === "rules" && <Rules />}
       </main>
 
       <footer className="app-footer">
         <div className="footer-inner">
           <div className="footer-brand">
             <Logo size={20} />
-            <span>Production LLM evaluation — open source</span>
+            <span>LLM evaluation pipeline — open source</span>
           </div>
           <div className="footer-links">
             <a href={GITHUB_URL} target="_blank" rel="noreferrer">
@@ -85,9 +82,6 @@ export default function App() {
             </a>
             <a href={`${API_URL}/docs`} target="_blank" rel="noreferrer">
               API Docs
-            </a>
-            <a href={`${API_URL}/health/guard`} target="_blank" rel="noreferrer">
-              Guard Status
             </a>
           </div>
         </div>

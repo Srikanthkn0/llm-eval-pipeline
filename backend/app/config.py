@@ -42,24 +42,9 @@ class Settings:
     REQUIRE_API_KEY: bool = os.getenv("REQUIRE_API_KEY", "").lower() in {"1", "true", "yes"}
     RATE_LIMIT_PER_MIN: int = int(os.getenv("RATE_LIMIT_PER_MIN", "120"))
     RATE_LIMIT_EVALS_PER_MIN: int = int(os.getenv("RATE_LIMIT_EVALS_PER_MIN", "10"))
-    RATE_LIMIT_SCAN_PER_MIN: int = int(os.getenv("RATE_LIMIT_SCAN_PER_MIN", "30"))
     MAX_EVAL_ROWS: int = int(os.getenv("MAX_EVAL_ROWS", "500"))
     MAX_PROMPT_CHARS: int = int(os.getenv("MAX_PROMPT_CHARS", "8000"))
     MAX_CONCURRENT_JOBS: int = int(os.getenv("MAX_CONCURRENT_JOBS", "3"))
-    ML_GUARD_ENABLED: bool = os.getenv("ML_GUARD_ENABLED", "true").lower() in {
-        "1",
-        "true",
-        "yes",
-    }
-    ML_GUARD_BACKEND: str = os.getenv("ML_GUARD_BACKEND", "sklearn")
-    ML_GUARD_THRESHOLD: float = float(os.getenv("ML_GUARD_THRESHOLD", "0.60"))
-    ML_GUARD_WARN_THRESHOLD: float = float(os.getenv("ML_GUARD_WARN_THRESHOLD", "0.45"))
-    ML_GUARD_MODEL_PATH: Path = Path(
-        os.getenv(
-            "ML_GUARD_MODEL_PATH",
-            str(BASE_DIR / "data" / "models" / "injection_classifier.joblib"),
-        )
-    )
 
     @property
     def require_api_key(self) -> bool:

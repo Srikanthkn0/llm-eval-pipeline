@@ -5,6 +5,8 @@
 
 Upload a CSV of test cases, run them against an LLM, score the outputs, and store the results. Built for quick prompt/model checks and a simple CI gate.
 
+**Author:** Srikanth K Nattudurai ([@Srikanthkn0](https://github.com/Srikanthkn0))
+
 - App: https://llm-eval-pipeline.vercel.app
 - API: https://llm-eval-pipeline-api.onrender.com
 - Docs: https://llm-eval-pipeline-api.onrender.com/docs
